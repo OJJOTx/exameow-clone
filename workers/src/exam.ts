@@ -1,6 +1,7 @@
 import { Ai } from '@cloudflare/workers-types'
 import { aiChat, aiChatOverrides } from './ai'
-import { ExamParams, Question, QuestionType, Difficulty, type AIRequestOptions } from './types'
+import { ExamParams, Question, QuestionType, Difficulty, MAX_DOC_TEXT_CHARS, MAX_PROMPT_CHARS, MAX_QUESTIONS_PER_REQUEST, type AIRequestOptions } from './types'
+import { clampNumber, clampText } from './guard'
 
 export async function generateExam(
   ai: Ai,
@@ -72,12 +73,13 @@ export function buildUserPrompt(text: string, params: ExamParams): string {
 
   const difficultyStr = difficultyMap[params.difficulty] || difficultyMap[Difficulty.Medium]
 
+  const chapterNames = (params.chapter_names ?? []).slice(0, 50).map(name => clampText(name, 80))
   const chapterNote = params.auto_chapter
-    ? `\nChapter tagging is enabled. Previously used chapter names (reuse when applicable): ${JSON.stringify(params.chapter_names ?? [])}`
+    ? `\nChapter tagging is enabled. Previously used chapter names (reuse when applicable): ${JSON.stringify(chapterNames)}`
     : ''
 
   const topicNote = params.topic_filter
-    ? `\nFocus on this topic: ${params.topic_filter}`
+    ? `\nFocus on this topic: ${clampText(params.topic_filter, 200)}`
     : ''
 
   const batchNote =
@@ -87,18 +89,19 @@ export function buildUserPrompt(text: string, params: ExamParams): string {
       ? `\nThis is batch ${params.batch_index}/${params.batch_total} of the document. Focus on different content than other batches would.`
       : ''
 
-  const docName = params.source_name
-    ? params.source_name.includes('、')
-      ? `\nThe documents are collectively titled: ${params.source_name}\nWhen questions need to reference a specific document, use its individual title above — do NOT say "the document" or "the text".`
-      : `\nThe document title is: ${params.source_name}\nWhen questions need to reference this document, use "${params.source_name}" — do NOT say "the document" or "the text".`
+  const sourceName = clampText(params.source_name, 200)
+  const docName = sourceName
+    ? sourceName.includes('、')
+      ? `\nThe documents are collectively titled: ${sourceName}\nWhen questions need to reference a specific document, use its individual title above — do NOT say "the document" or "the text".`
+      : `\nThe document title is: ${sourceName}\nWhen questions need to reference this document, use "${sourceName}" — do NOT say "the document" or "the text".`
     : ''
 
-  const customPrompt = params.custom_prompt?.trim()
+  const customPrompt = params.custom_prompt?.trim().slice(0, MAX_PROMPT_CHARS)
   const customNote = customPrompt
     ? `\n\n## Additional Instructions (user-provided, highest priority)\n${customPrompt}\n\n## Document rules still apply`
     : ''
 
-  const maxChars = 32000
+  const maxChars = MAX_DOC_TEXT_CHARS
   const textSection =
     text.length > maxChars
       ? text.slice(0, (maxChars * 6) / 10) +
@@ -106,23 +109,19 @@ export function buildUserPrompt(text: string, params: ExamParams): string {
         text.slice(text.length - (maxChars * 4) / 10)
       : text
 
-  const countInstruction = params.type_counts
-    ? (() => {
-        const parts: string[] = []
-        let total = 0
-        for (const [key, cnt] of Object.entries(params.type_counts)) {
-          if (cnt > 0) {
-            parts.push(`${cnt} ${key} questions`)
-            total += cnt
-          }
-        }
-        return `Generate exactly the following breakdown of ${total} questions:\n${parts.join('\n')}`
-      })()
-    : `Generate ${params.count} questions.\nQuestion types: ${params.question_types.join(', ')}`
+  const breakdown = params.type_counts
+    ? Object.entries(params.type_counts)
+        .slice(0, 20)
+        .map(([key, value]) => [clampText(key, 40), clampNumber(value, 0, MAX_QUESTIONS_PER_REQUEST, 0)] as const)
+        .filter(([, value]) => value > 0)
+    : []
+  const countInstruction = breakdown.length
+    ? `Generate exactly the following breakdown of ${breakdown.reduce((sum, [, value]) => sum + value, 0)} questions:\n${breakdown.map(([key, value]) => `${value} ${key} questions`).join('\n')}`
+    : `Generate ${clampNumber(params.count, 1, MAX_QUESTIONS_PER_REQUEST, 1)} questions.\nQuestion types: ${(params.question_types ?? []).slice(0, 10).map(type => clampText(type, 40)).join(', ')}`
 
   return `${countInstruction}
 Difficulty: ${difficultyStr}
-Language: ${params.language}${topicNote}${chapterNote}${batchNote}${docName}${customNote}
+Language: ${clampText(params.language, 40)}${topicNote}${chapterNote}${batchNote}${docName}${customNote}
 
 DOCUMENT CONTENT:
 ${textSection}`

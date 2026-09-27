@@ -1,5 +1,5 @@
 import { Ai } from '@cloudflare/workers-types'
-import { DEFAULT_MODEL, type AIRequestOptions } from './types'
+import { DEFAULT_MODEL, MAX_OUTPUT_TOKENS, MAX_PROMPT_CHARS, MAX_USER_PROMPT_CHARS, type AIRequestOptions } from './types'
 
 export interface AIChatOverrides {
   maxTokens?: number
@@ -30,7 +30,7 @@ interface AIChatInput {
 }
 
 function withExtraPrompt(system: string, extra?: string): string {
-  const trimmed = extra?.trim()
+  const trimmed = extra?.trim().slice(0, MAX_PROMPT_CHARS)
   if (!trimmed) return system
   return `${system}\n\n## Additional Instructions (user-provided, highest priority)\n${trimmed}\n\n## Follow the required output format above.`
 }
@@ -91,14 +91,18 @@ export async function aiChat(
   const options: Record<string, unknown> = {
     messages: [
       { role: 'system', content: withExtraPrompt(input.systemPrompt, input.extraPrompt) },
-      { role: 'user', content: input.userPrompt },
+      { role: 'user', content: input.userPrompt.slice(0, MAX_USER_PROMPT_CHARS) },
     ],
     stream: false,
   }
   if (!input.omitTemperature) {
     options.temperature = typeof input.temperature === 'number' ? input.temperature : 0.7
   }
-  options.max_tokens = typeof input.maxTokens === 'number' ? input.maxTokens : 16384
+  const requestedTokens =
+    typeof input.maxTokens === 'number' && Number.isFinite(input.maxTokens)
+      ? Math.floor(input.maxTokens)
+      : MAX_OUTPUT_TOKENS
+  options.max_tokens = Math.min(Math.max(requestedTokens, 1), MAX_OUTPUT_TOKENS)
 
   const result: any = await ai.run(model as any, options)
 
