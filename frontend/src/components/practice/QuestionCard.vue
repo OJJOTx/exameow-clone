@@ -315,54 +315,86 @@ function getBadgeStyle(opt: string) {
         <button
           v-for="opt in trueFalseOptions"
           :key="opt.value"
-          class="w-full text-left p-3.5 rounded-[20px] border transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex items-center gap-3.5 cursor-pointer active:scale-[0.98] shadow-xs"
+          class="w-full text-left p-3.5 rounded-[20px] border transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex flex-col gap-2 cursor-pointer active:scale-[0.98] shadow-xs"
           :disabled="!interactive"
           :style="getOptionStyle(opt.value, 0)"
           @click="selectOption(opt.value)"
         >
+          <div class="flex items-start gap-3.5 w-full">
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-transform duration-200"
+              :style="getBadgeStyle(opt.value)"
+            >{{ opt.value }}</div>
+            <div class="text-sm font-medium flex-1 pt-1.5" :style="{ color: 'rgb(var(--md-on-surface))' }">
+              {{ opt.label.replace(/^[A-Z]\.\s*/, '') }}
+            </div>
+            <CheckCircleIcon
+              v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(opt.value)"
+              class="w-5 h-5 ml-auto animate-spring-pop shrink-0 mt-1.5"
+              :style="{ color: 'rgb(var(--md-primary))' }"
+            />
+            <XCircleIcon
+              v-if="submitted && !correctAnswerSet.has(opt.value) && selectedSet.has(opt.value)"
+              class="w-5 h-5 ml-auto animate-spring-pop shrink-0 mt-1.5"
+              :style="{ color: 'rgb(var(--md-error))' }"
+            />
+          </div>
           <div
-            class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-transform duration-200"
-            :style="getBadgeStyle(opt.value)"
-          >{{ opt.value }}</div>
-          <span class="text-sm font-medium flex-1" :style="{ color: 'rgb(var(--md-on-surface))' }">
-            {{ opt.label.replace(/^[A-Z]\.\s*/, '') }}
-          </span>
-          <CheckCircleIcon
-            v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(opt.value)"
-            class="w-5 h-5 ml-auto animate-spring-pop shrink-0"
-            :style="{ color: 'rgb(var(--md-primary))' }"
-          />
-          <XCircleIcon
-            v-if="submitted && !correctAnswerSet.has(opt.value) && selectedSet.has(opt.value)"
-            class="w-5 h-5 ml-auto animate-spring-pop shrink-0"
-            :style="{ color: 'rgb(var(--md-error))' }"
-          />
+            v-if="(submitted || showFlashcardPreview) && (question.explanation?.byOptionId?.[opt.value]?.length ?? 0) > 0"
+            class="pl-[46px] pr-2 text-xs"
+          >
+            <div class="flex items-center gap-1.5 font-bold mb-1" :style="{ color: correctAnswerSet.has(opt.value) ? 'rgb(var(--md-primary))' : 'rgb(var(--md-error))' }">
+              <CheckCircleIcon v-if="correctAnswerSet.has(opt.value)" class="w-4 h-4" />
+              <XCircleIcon v-else class="w-4 h-4" />
+              <span>{{ correctAnswerSet.has(opt.value) ? i18n.t('practiceCorrect') : i18n.t('practiceIncorrect') }}</span>
+            </div>
+            <div :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+              <ContentBlocks :blocks="question.explanation.byOptionId[opt.value]!" />
+            </div>
+          </div>
         </button>
       </template>
       <template v-else>
         <button
           v-for="(opt, idx) in question.options"
           :key="opt.id"
-          class="w-full text-left p-3.5 rounded-[20px] border transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex items-center gap-3.5 cursor-pointer active:scale-[0.98] shadow-xs"
+          class="w-full text-left p-3.5 rounded-[20px] border transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex flex-col gap-2 cursor-pointer active:scale-[0.98] shadow-xs"
           :disabled="!interactive"
           :style="getOptionStyle(opt.id, idx)"
           @click="selectOption(opt.id)"
         >
+          <div class="flex items-start gap-3.5 w-full">
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-transform duration-200"
+              :style="getBadgeStyle(opt.id)"
+            >{{ optionLabels[idx] }}</div>
+            <div class="text-sm font-medium flex-1 pt-1.5" :style="{ color: 'rgb(var(--md-on-surface))' }">
+              <ContentBlocks :blocks="[opt.content]" />
+            </div>
+            <CheckCircleIcon
+              v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(opt.id)"
+              class="w-5 h-5 ml-auto animate-spring-pop shrink-0 mt-1.5"
+              :style="{ color: 'rgb(var(--md-primary))' }"
+            />
+            <XCircleIcon
+              v-if="submitted && !correctAnswerSet.has(opt.id) && selectedSet.has(opt.id)"
+              class="w-5 h-5 ml-auto animate-spring-pop shrink-0 mt-1.5"
+              :style="{ color: 'rgb(var(--md-error))' }"
+            />
+          </div>
           <div
-            class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-transform duration-200"
-            :style="getBadgeStyle(opt.id)"
-          >{{ optionLabels[idx] }}</div>
-          <span class="text-sm font-medium flex-1" :style="{ color: 'rgb(var(--md-on-surface))' }"><ContentBlocks :blocks="[opt.content]" /></span>
-          <CheckCircleIcon
-            v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(opt.id)"
-            class="w-5 h-5 ml-auto animate-spring-pop shrink-0"
-            :style="{ color: 'rgb(var(--md-primary))' }"
-          />
-          <XCircleIcon
-            v-if="submitted && !correctAnswerSet.has(opt.id) && selectedSet.has(opt.id)"
-            class="w-5 h-5 ml-auto animate-spring-pop shrink-0"
-            :style="{ color: 'rgb(var(--md-error))' }"
-          />
+            v-if="(submitted || showFlashcardPreview) && (question.explanation?.byOptionId?.[opt.id]?.length ?? 0) > 0"
+            class="pl-[46px] pr-2 text-xs"
+          >
+            <div class="flex items-center gap-1.5 font-bold mb-1" :style="{ color: correctAnswerSet.has(opt.id) ? 'rgb(var(--md-primary))' : 'rgb(var(--md-error))' }">
+              <CheckCircleIcon v-if="correctAnswerSet.has(opt.id)" class="w-4 h-4" />
+              <XCircleIcon v-else class="w-4 h-4" />
+              <span>{{ correctAnswerSet.has(opt.id) ? i18n.t('practiceCorrect') : i18n.t('practiceIncorrect') }}</span>
+            </div>
+            <div :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+              <ContentBlocks :blocks="question.explanation.byOptionId[opt.id]!" />
+            </div>
+          </div>
         </button>
       </template>
     </div>
@@ -561,18 +593,18 @@ function getBadgeStyle(opt: string) {
 
     <p v-if="submitted && question.correctAnswer === null" class="mt-3 text-sm">Answer unknown — this question is not graded.</p>
     <!-- Analysis for choice types (flashcard preview or submitted) -->
-    <div v-if="showFlashcardPreview && isChoiceType && hasExplanation(question)" class="mt-3">
+    <div v-if="showFlashcardPreview && isChoiceType && question.explanation?.general?.length > 0" class="mt-3">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))', color: 'rgb(var(--md-on-surface-variant))' }">
         <span class="text-label-sm mr-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceReviewAnalysis') }}：</span>
-        <QuestionExplanation :question="question" />
+        <ContentBlocks :blocks="question.explanation.general" />
       </div>
     </div>
 
     <!-- Analysis for choice types (normal submitted) -->
-    <div v-if="submitted && hasExplanation(question) && !showFlashcardPreview" class="mt-3">
+    <div v-if="submitted && isChoiceType && question.explanation?.general?.length > 0 && !showFlashcardPreview" class="mt-3">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))', color: 'rgb(var(--md-on-surface-variant))' }">
         <span class="text-label-sm mr-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceReviewAnalysis') }}：</span>
-        <QuestionExplanation :question="question" />
+        <ContentBlocks :blocks="question.explanation.general" />
       </div>
     </div>
 
