@@ -1,3 +1,4 @@
+import { headerText, answerText, blockText } from '@exameow/shared'
 import { useScreenRecordStore, type ScreenRegion } from '@/stores/screenRecord'
 import { api } from '@/api'
 import { recognizeImage, preloadOcr } from '@/utils/ocr'
@@ -120,7 +121,7 @@ async function processFrameBitmap(bitmap: ImageBitmap) {
   })
 
   log('候选:', hits.length
-    ? hits.slice(0, 3).map((hh) => `${hh.question.stem.slice(0, 16)}…=${hh.score.toFixed(2)}`).join(' | ')
+    ? hits.slice(0, 3).map((hh) => `${headerText(hh.question).slice(0, 16)}…=${hh.score.toFixed(2)}`).join(' | ')
     : '无')
 
   const decision = decideScanResult(store.currentResult?.question ?? null, hits)
@@ -222,9 +223,9 @@ export function useScreenRecord() {
       await invoke('plugin:screenrecord|show_answer', {
         paused: store.status === 'adjusting',
         found: !!r,
-        answer: r?.question.answer ?? '',
-        stem: r?.question.stem ?? '',
-        options: r?.question.options ?? [],
+        answer: r ? answerText(r.question) : '',
+        stem: r ? headerText(r.question) : '',
+        options: r?.question.options.map(o => blockText(o.content)) ?? [],
         bankName: r?.bankName ?? '',
         dark,
       })

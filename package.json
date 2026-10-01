@@ -6,9 +6,11 @@
   "scripts": {
     "dev": "cd frontend && pnpm dev",
     "build": "cd frontend && pnpm build",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:schema": "node --import tsx packages/shared/src/questions.test.ts"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4"
+    "@tauri-apps/cli": "^2.11.4",
+    "tsx": "^4.23.15"
   }
 }

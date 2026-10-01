@@ -1,6 +1,6 @@
 export enum QuestionType {
   SingleChoice = 'single_choice',
-  MultiChoice = 'multi_choice',
+  MultiChoice = 'multiple_choice',
   TrueFalse = 'true_false',
   FillBlank = 'fill_blank',
   ShortAnswer = 'short_answer',
@@ -12,13 +12,20 @@ export enum Difficulty {
   Hard = 'hard',
 }
 
+export type ContentBlock =
+  | { type: 'text'; format?: 'plain' | 'html'; content: string }
+  | { type: 'image'; content: string }
+
+export interface QuestionOption { id: string; content: ContentBlock }
+export interface QuestionExplanation { general: ContentBlock[]; byOptionId: Record<string, ContentBlock[]> }
+
 export interface Question {
   id: string
   type: QuestionType
-  stem: string
-  options: string[]
-  answer: string
-  analysis: string
+  questionHeader: ContentBlock[]
+  options: QuestionOption[]
+  correctAnswer: string[] | string | null
+  explanation: QuestionExplanation
   aiAnalysis?: string
   score?: number
   subject?: string
@@ -35,11 +42,12 @@ export interface PracticeFilter {
 }
 
 export interface QuestionBank {
+  schemaVersion: 2
   id: string
   name: string
   questions: Question[]
   createdAt: number
-  source: 'ai-generated' | 'csv-import' | 'xlsx-import'
+  source: 'ai-generated' | 'csv-import' | 'xlsx-import' | 'json-import'
 }
 
 export type PracticeMode = 'sequential' | 'random' | 'mock' | 'wrong'
@@ -149,8 +157,8 @@ export interface ExplainResult {
 export interface PublicQuestion {
   id: string
   type: QuestionType
-  stem: string
-  options: string[]
+  questionHeader: ContentBlock[]
+  options: QuestionOption[]
 }
 
 export interface PublishExamRequest {

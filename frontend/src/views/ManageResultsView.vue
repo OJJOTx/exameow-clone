@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import ContentBlocks from '@/components/common/ContentBlocks.vue'
+
+import { headerText, answerText, selectionText, normalizeQuestion, migrateSelection } from '@exameow/shared'
+
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
@@ -24,7 +28,9 @@ const CACHE_KEY = `exameow-results-${code}`
 
 function loadCache(): { data: ExamResultsResponse; fetchedAt: number } | null {
   try {
-    return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null')
+    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null')
+    if (cached?.data?.questions) cached.data.questions = cached.data.questions.map(normalizeQuestion)
+    return cached
   } catch {
     return null
   }
@@ -72,7 +78,7 @@ function detailFor(r: ExamResultEntry, questionId: string): boolean | null | und
 
 function answerFor(r: ExamResultEntry, q: Question): string {
   const a = r.answers[q.id]
-  return typeof a === 'string' && a.trim() ? a : i18n.t('takeUnanswered')
+  return typeof a === 'string' && a.trim() ? selectionText(q, migrateSelection(q, a)) : i18n.t('takeUnanswered')
 }
 
 function fmtTime(ts: number): string {
@@ -157,9 +163,9 @@ function fmtDuration(sec: number): string {
                       >✗</span>
                       <span v-else class="text-body-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takePendingShort') }}</span>
                       <div class="flex-1">
-                        <p class="font-medium">{{ qi + 1 }}. {{ q.stem }}</p>
+                        <p class="font-medium">{{ qi + 1 }}. <ContentBlocks :blocks="q.questionHeader" /></p>
                         <p class="text-body-sm" style="color: rgb(var(--md-on-surface-variant))">
-                          {{ i18n.t('takeYourAnswer') }}: {{ answerFor(r, q) }} · {{ i18n.t('takeCorrectAnswer') }}: {{ q.answer }}
+                          {{ i18n.t('takeYourAnswer') }}: {{ answerFor(r, q) }} · {{ i18n.t('takeCorrectAnswer') }}: {{ answerText(q) }}
                         </p>
                       </div>
                     </div>

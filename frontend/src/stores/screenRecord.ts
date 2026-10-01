@@ -1,3 +1,4 @@
+import { answerText as formatAnswer } from '@exameow/shared'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Question } from '@exameow/shared'
@@ -32,7 +33,7 @@ export const useScreenRecordStore = defineStore('screenRecord', () => {
   const isRecording = computed(() => status.value === 'recording')
   const answerText = computed(() => {
     if (!currentResult.value) return null
-    return currentResult.value.question.answer
+    return formatAnswer(currentResult.value.question)
   })
 
   function startRecording() {

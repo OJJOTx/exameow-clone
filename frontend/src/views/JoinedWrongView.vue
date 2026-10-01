@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { selectionText } from '@exameow/shared'
+import ContentBlocks from '@/components/common/ContentBlocks.vue'
+import QuestionExplanation from '@/components/common/QuestionExplanation.vue'
+import { hasExplanation } from '@exameow/shared'
+
+import { headerText, answerText, explanationText } from '@exameow/shared'
+
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
@@ -23,7 +30,7 @@ const wrongList = computed(() =>
 const typeLabel = (t: string): string => {
   const labels: Record<string, string> = {
     single_choice: i18n.t('typeSingle'),
-    multi_choice: i18n.t('typeMulti'),
+    multiple_choice: i18n.t('typeMulti'),
     true_false: i18n.t('typeTrueFalse'),
     fill_blank: i18n.t('typeFillBlank'),
     short_answer: i18n.t('typeShortAnswer'),
@@ -68,14 +75,14 @@ const typeLabel = (t: string): string => {
                 style="background-color: rgb(var(--md-secondary-container)); color: rgb(var(--md-on-secondary-container))"
               >{{ typeLabel(g.question.type) }}</span>
             </div>
-            <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))">{{ g.question.stem }}</div>
+            <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))"><ContentBlocks :blocks="g.question.questionHeader" /></div>
             <div class="text-label-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takeYourAnswer') }}</div>
             <div class="text-sm mb-2" style="color: rgb(var(--md-error))">
-              {{ g.userAnswer || i18n.t('takeUnanswered') }}
+              {{ selectionText(g.question, g.userAnswer) || i18n.t('takeUnanswered') }}
             </div>
             <div class="text-label-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takeCorrectAnswer') }}</div>
-            <div class="text-sm mb-2" style="color: rgb(var(--md-primary))">{{ g.question.answer }}</div>
-            <div v-if="g.question.analysis" class="text-xs" style="color: rgb(var(--md-on-surface-variant))">{{ g.question.analysis }}</div>
+            <div class="text-sm mb-2" style="color: rgb(var(--md-primary))">{{ answerText(g.question) }}</div>
+            <div v-if="hasExplanation(g.question)" class="text-xs" style="color: rgb(var(--md-on-surface-variant))"><QuestionExplanation :question="g.question" /></div>
           </div>
         </div>
       </div>

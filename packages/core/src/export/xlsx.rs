@@ -6,7 +6,7 @@ use zip::CompressionMethod;
 
 const XLSX_TYPE_MAP: &[(&str, &str)] = &[
     ("single_choice", "单选题"),
-    ("multi_choice", "多选题"),
+    ("multiple_choice", "多选题"),
     ("true_false", "判断题"),
     ("fill_blank", "填空题"),
     ("short_answer", "简答题"),
@@ -205,12 +205,15 @@ fn generate_xlsx(questions: &[Question]) -> Result<Vec<u8>, CoreError> {
     for q in questions {
         writer.new_row();
 
-        let stem = q.stem.trim();
+        let stem_text = q.stem_text();
+        let stem = stem_text.trim();
         let qtype_str = q.qtype.to_string();
         let qtype = to_chinese_type(&qtype_str);
-        let analysis = q.analysis.trim();
-        let answer = q.answer.trim();
-        let options: Vec<String> = q.options.iter().map(|o| o.trim().to_string()).collect();
+        let analysis_text = q.analysis_text();
+        let analysis = analysis_text.trim();
+        let answer_text = q.answer_text();
+        let answer = answer_text.trim();
+        let options: Vec<String> = q.options.iter().map(|o| o.content.as_text().trim().to_string()).collect();
 
         let k_answer = match &q.qtype {
             crate::exam::QuestionType::SingleChoice | crate::exam::QuestionType::MultiChoice => {

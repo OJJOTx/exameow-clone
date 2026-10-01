@@ -1,9 +1,10 @@
+import { normalizeQuestion } from '@exameow/shared'
 import { api } from '@/api'
 import { generateCsvContent } from '@/api/http'
 import { exportBankToWord } from '@/utils/wordExport'
 import type { QuestionBank } from '@exameow/shared'
 
-export type BankExportFormat = 'csv' | 'xlsx' | 'word'
+export type BankExportFormat = 'json' | 'csv' | 'xlsx' | 'word'
 
 export interface BankExportResult {
   ok: boolean
@@ -46,6 +47,36 @@ async function saveTauri(filename: string, questions: QuestionBank['questions'],
 }
 
 export async function exportBank(bank: QuestionBank, format: BankExportFormat): Promise<BankExportResult> {
+  if (format === 'json') {
+    const filename = `${sanitizeFilename(bank.name)}.json`
+    const json = JSON.stringify({ schemaVersion: 2, id: bank.id, name: bank.name, questions: bank.questions.map(normalizeQuestion) }, null, 2)
+    try {
+      if (isTauriPlatform()) {
+        const { tauriApi } = await import('@/api/bridge')
+        const bytes = new TextEncoder().encode(json)
+        let binary = ''
+        for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
+        const data = btoa(binary)
+        let path: string | null
+        try {
+          const dialog: any = await import('@tauri-apps/plugin-dialog')
+          path = await dialog.save({ defaultPath: filename, filters: [{ name: 'JSON', extensions: ['json'] }] })
+          if (!path) return { ok: false, cancelled: true }
+        } catch {
+          return { ok: true, path: await tauriApi.saveToDownloads(filename, data) }
+        }
+        await tauriApi.writeFile(path, data)
+        return { ok: true, path }
+      }
+      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }))
+      const link = document.createElement('a'); link.href = url; link.download = filename; link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      return { ok: true, path: filename }
+    } catch (error) { return { ok: false, error: String(error) } }
+  }
+  if (bank.questions.some(q => [...q.questionHeader, ...q.options.map(o => o.content), ...q.explanation.general, ...Object.values(q.explanation.byOptionId).flat()].some(b => b.type === 'image'))) {
+    return { ok: false, error: 'Use JSON to export this bank with all embedded images.' }
+  }
   if (format === 'word') {
     try {
       const files = await exportBankToWord(bank)

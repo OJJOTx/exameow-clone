@@ -32,14 +32,14 @@ fn write_csv_records<W: Write>(questions: &[Question], wtr: &mut csv::Writer<W>)
         let qtype_str = q.qtype.to_string();
         let qtype = to_chinese_type(&qtype_str);
         let mut row: Vec<String> = vec![
-            q.stem.clone(),
+            q.stem_text(),
             qtype.to_string(),
         ];
         for i in 0..8 {
-            row.push(q.options.get(i).cloned().unwrap_or_default());
+            row.push(q.options.get(i).map(|o| o.content.as_text()).unwrap_or_default());
         }
-        row.push(q.answer.clone());
-        row.push(q.analysis.clone());
+        row.push(q.answer_text());
+        row.push(q.analysis_text());
         row.push(q.subject.clone().unwrap_or_default());
         row.push(q.chapter.clone().unwrap_or_default());
         row.push(q.difficulty.as_ref().map(ToString::to_string).unwrap_or_default());

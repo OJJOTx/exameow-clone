@@ -1,3 +1,4 @@
+import { answerText as formatAnswer } from '@exameow/shared'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Question } from '@exameow/shared'
@@ -17,7 +18,7 @@ export const useCameraLiveStore = defineStore('cameraLive', () => {
   const isScanning = computed(() => status.value === 'scanning')
   const answerText = computed(() => {
     if (!currentResult.value) return null
-    return currentResult.value.question.answer
+    return formatAnswer(currentResult.value.question)
   })
 
   function startScanning() {

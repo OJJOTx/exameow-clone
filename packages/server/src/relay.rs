@@ -213,47 +213,7 @@ fn window_check(exam: &StoredExam) -> Option<Err> {
     None
 }
 
-fn normalize_choice(s: &str) -> String {
-    let mut chars: Vec<char> = s
-        .trim()
-        .to_uppercase()
-        .chars()
-        .filter(|c| ('A'..='H').contains(c))
-        .collect();
-    chars.sort();
-    chars.into_iter().collect()
-}
-
-fn is_true_answer(a: &str) -> bool {
-    const ALIASES: &[&str] = &["A", "√", "对", "正确", "TRUE", "T", "是", "YES", "Y", "1"];
-    const NEGATIONS: &[char] = &['不', '非', '错', '没'];
-    let t = a.trim();
-    let upper = t.to_uppercase();
-    ALIASES.iter().any(|v| {
-        upper == v.to_uppercase()
-            || (v.chars().count() > 1 && t.contains(v) && !t.replacen(v, "", 1).chars().any(|c| NEGATIONS.contains(&c)))
-    })
-}
-
-fn grade(q: &Question, user: Option<&str>) -> Option<bool> {
-    if q.qtype == exameow_core::exam::QuestionType::ShortAnswer {
-        return None;
-    }
-    let u = user?;
-    if u.trim().is_empty() {
-        return Some(false);
-    }
-    match q.qtype {
-        exameow_core::exam::QuestionType::SingleChoice | exameow_core::exam::QuestionType::MultiChoice => {
-            Some(normalize_choice(u) == normalize_choice(&q.answer))
-        }
-        exameow_core::exam::QuestionType::TrueFalse => Some(is_true_answer(u) == is_true_answer(&q.answer)),
-        exameow_core::exam::QuestionType::FillBlank => {
-            Some(u.trim().to_lowercase() == q.answer.trim().to_lowercase())
-        }
-        exameow_core::exam::QuestionType::ShortAnswer => None,
-    }
-}
+fn grade(q: &Question, user: Option<&str>) -> Option<bool> { q.grade(user) }
 
 fn client_ip(headers: &HeaderMap) -> String {
     headers
@@ -378,7 +338,7 @@ pub async fn get_exam_handler(
             serde_json::json!({
                 "id": q.id,
                 "type": q.qtype,
-                "stem": q.stem,
+                "questionHeader": q.question_header,
                 "options": q.options,
             })
         })

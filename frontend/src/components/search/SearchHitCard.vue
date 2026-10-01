@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ContentBlocks from '@/components/common/ContentBlocks.vue'
+import QuestionExplanation from '@/components/common/QuestionExplanation.vue'
+import { hasExplanation } from '@exameow/shared'
+
+import { headerText, answerText, explanationText, blockText } from '@exameow/shared'
+
 import { ref } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import type { SearchHit } from '@/utils/questionSearch'
@@ -10,7 +16,7 @@ const showAnalysis = ref(false)
 
 const typeLabelKeys: Record<string, 'typeSingle' | 'typeMulti' | 'typeTrueFalse' | 'typeFillBlank' | 'typeShortAnswer'> = {
   single_choice: 'typeSingle',
-  multi_choice: 'typeMulti',
+  multiple_choice: 'typeMulti',
   true_false: 'typeTrueFalse',
   fill_blank: 'typeFillBlank',
   short_answer: 'typeShortAnswer',
@@ -18,12 +24,12 @@ const typeLabelKeys: Record<string, 'typeSingle' | 'typeMulti' | 'typeTrueFalse'
 
 function isCorrectOption(idx: number): boolean {
   const q = props.hit.question
-  if (q.type === 'single_choice' || q.type === 'multi_choice') {
-    const letters = q.answer.toUpperCase().replace(/[^A-H]/g, '')
+  if (q.type === 'single_choice' || q.type === 'multiple_choice') {
+    const letters = answerText(q).toUpperCase().replace(/[^A-H]/g, '')
     return letters.includes(String.fromCharCode(65 + idx))
   }
   if (q.type === 'true_false') {
-    return q.answer.trim().toLowerCase() === (q.options[idx] || '').trim().toLowerCase()
+    return answerText(q).trim().toLowerCase() === blockText(q.options[idx]?.content).trim().toLowerCase()
   }
   return false
 }
@@ -49,7 +55,7 @@ function isCorrectOption(idx: number): boolean {
       </span>
     </div>
 
-    <p class="text-body-lg mb-2 whitespace-pre-wrap">{{ hit.question.stem }}</p>
+    <p class="text-body-lg mb-2 whitespace-pre-wrap"><ContentBlocks :blocks="hit.question.questionHeader" /></p>
 
     <div v-if="hit.question.options.length" class="space-y-1 mb-2">
       <div
@@ -62,16 +68,16 @@ function isCorrectOption(idx: number): boolean {
         }"
       >
         <span>{{ String.fromCharCode(65 + oi) }}.</span>
-        <span class="whitespace-pre-wrap">{{ opt }}</span>
+        <span class="whitespace-pre-wrap"><ContentBlocks :blocks="[opt.content]" /></span>
       </div>
     </div>
 
     <div class="text-body-md mb-1">
       <span class="text-label-lg mr-2" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('tableAnswer') }}</span>
-      <span class="font-semibold" style="color: rgb(var(--md-primary))">{{ hit.question.answer }}</span>
+      <span class="font-semibold" style="color: rgb(var(--md-primary))">{{ answerText(hit.question) }}</span>
     </div>
 
-    <template v-if="hit.question.analysis">
+    <template v-if="hasExplanation(hit.question)">
       <button
         class="flex items-center gap-1 text-sm font-medium"
         style="color: rgb(var(--md-primary))"
@@ -84,7 +90,7 @@ function isCorrectOption(idx: number): boolean {
         />
       </button>
       <p v-if="showAnalysis" class="text-body-md mt-2 whitespace-pre-wrap" style="color: rgb(var(--md-on-surface-variant))">
-        {{ hit.question.analysis }}
+        <QuestionExplanation :question="hit.question" />
       </p>
     </template>
   </div>

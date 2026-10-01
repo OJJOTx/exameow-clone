@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { headerText } from '@exameow/shared'
 import { computed, ref } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { usePracticeStore } from '@/stores/practice'
@@ -46,7 +47,7 @@ const entries = computed(() => {
 
 function getQuestionStem(entry: WrongQuestionEntry): string {
   const q = bank.value?.questions.find(q => q.id === entry.questionId)
-  return q?.stem ?? i18n.t('practiceQuestionGone')
+  return q ? headerText(q) : i18n.t('practiceQuestionGone')
 }
 
 function formatDate(ts: number): string {

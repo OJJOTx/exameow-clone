@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { selectedIds } from '@exameow/shared'
+import ContentBlocks from '@/components/common/ContentBlocks.vue'
+import QuestionExplanation from '@/components/common/QuestionExplanation.vue'
+import { hasExplanation } from '@exameow/shared'
+
+import { headerText, answerText, explanationText } from '@exameow/shared'
+
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
@@ -51,7 +58,7 @@ const answerRevealed = ref(false)
 
 const isChoiceType = computed(() => {
   return props.question.type === 'single_choice' ||
-    props.question.type === 'multi_choice' ||
+    props.question.type === 'multiple_choice' ||
     props.question.type === 'true_false'
 })
 
@@ -71,23 +78,24 @@ const optionLabels = 'ABCDEFGH'.split('')
 
 const correctAnswerSet = computed(() => {
   if (props.question.type === 'true_false') {
-    const a = props.question.answer.trim()
+    if (props.question.correctAnswer === null) return new Set<string>()
+    const a = answerText(props.question).trim()
     const isTrue = ['A', '√', '对', '正确', 'TRUE', 'T', '是', 'YES', 'Y', '1'].some(
       v => a.toUpperCase() === v.toUpperCase() || a.includes(v)
     )
     return new Set<string>(isTrue ? ['A'] : ['B'])
   }
-  return new Set(props.question.answer.trim().toUpperCase().replace(/[^A-H]/g, '').split(''))
+  return new Set(Array.isArray(props.question.correctAnswer) ? props.question.correctAnswer : [])
 })
 
 const selectedSet = computed(() => {
   if (!props.userAnswer) return new Set<string>()
-  return new Set(props.userAnswer.trim().toUpperCase().replace(/[^A-H]/g, '').split(''))
+  return new Set(props.question.type === 'true_false' ? [props.userAnswer] : selectedIds(props.userAnswer))
 })
 
 const canSubmit = computed(() => {
   if (props.submitted) return false
-  if (props.question.type === 'multi_choice') return selectedSet.value.size > 0
+  if (props.question.type === 'multiple_choice') return selectedSet.value.size > 0
   if (isChoiceType.value) return selectedSet.value.size > 0
   return false
 })
@@ -95,7 +103,7 @@ const canSubmit = computed(() => {
 const typeLabel = computed(() => {
   const labels: Record<string, string> = {
     single_choice: i18n.t('typeSingle'),
-    multi_choice: i18n.t('typeMulti'),
+    multiple_choice: i18n.t('typeMulti'),
     true_false: i18n.t('typeTrueFalse'),
     fill_blank: i18n.t('typeFillBlank'),
     short_answer: i18n.t('typeShortAnswer'),
@@ -117,7 +125,7 @@ function selectOption(opt: string) {
   if (!interactive.value) return
 
   if (props.question.type === 'single_choice' || props.question.type === 'true_false') {
-    emit('submit', opt)
+    emit('submit', props.question.type === 'true_false' ? opt : JSON.stringify([opt]))
     return
   }
   const current = new Set(selectedSet.value)
@@ -126,7 +134,7 @@ function selectOption(opt: string) {
   } else {
     current.add(opt)
   }
-  const ans = Array.from(current).sort().join('')
+  const ans = current.size ? JSON.stringify(Array.from(current).sort()) : ''
   emit('select', ans || null)
 }
 
@@ -285,7 +293,7 @@ function getBadgeStyle(opt: string) {
 
     <!-- Stem -->
     <div class="text-body-lg mb-5" :style="{ color: 'rgb(var(--md-on-surface))' }">
-      {{ question.stem }}
+      <ContentBlocks :blocks="question.questionHeader" />
     </div>
 
     <!-- Wrong count badge -->
@@ -334,24 +342,24 @@ function getBadgeStyle(opt: string) {
       <template v-else>
         <button
           v-for="(opt, idx) in question.options"
-          :key="idx"
+          :key="opt.id"
           class="w-full text-left p-3.5 rounded-[20px] border transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] flex items-center gap-3.5 cursor-pointer active:scale-[0.98] shadow-xs"
           :disabled="!interactive"
-          :style="getOptionStyle(optionLabels[idx]!, idx)"
-          @click="selectOption(optionLabels[idx]!)"
+          :style="getOptionStyle(opt.id, idx)"
+          @click="selectOption(opt.id)"
         >
           <div
             class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-transform duration-200"
-            :style="getBadgeStyle(optionLabels[idx]!)"
+            :style="getBadgeStyle(opt.id)"
           >{{ optionLabels[idx] }}</div>
-          <span class="text-sm font-medium flex-1" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ opt }}</span>
+          <span class="text-sm font-medium flex-1" :style="{ color: 'rgb(var(--md-on-surface))' }"><ContentBlocks :blocks="[opt.content]" /></span>
           <CheckCircleIcon
-            v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(optionLabels[idx]!)"
+            v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(opt.id)"
             class="w-5 h-5 ml-auto animate-spring-pop shrink-0"
             :style="{ color: 'rgb(var(--md-primary))' }"
           />
           <XCircleIcon
-            v-if="submitted && !correctAnswerSet.has(optionLabels[idx]!) && selectedSet.has(optionLabels[idx]!)"
+            v-if="submitted && !correctAnswerSet.has(opt.id) && selectedSet.has(opt.id)"
             class="w-5 h-5 ml-auto animate-spring-pop shrink-0"
             :style="{ color: 'rgb(var(--md-error))' }"
           />
@@ -360,7 +368,7 @@ function getBadgeStyle(opt: string) {
     </div>
 
       <!-- Multi-choice confirm button -->
-      <div v-if="question.type === 'multi_choice' && interactive" class="mt-3">
+      <div v-if="question.type === 'multiple_choice' && interactive" class="mt-3">
         <button
           class="btn-filled w-full"
           :disabled="!canSubmit"
@@ -467,10 +475,10 @@ function getBadgeStyle(opt: string) {
           {{ i18n.t('practiceReviewCorrectAnswer') }}
         </div>
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
-          {{ question.answer }}
+          {{ answerText(question) }}
         </div>
-        <div v-if="question.analysis" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span>{{ question.analysis }}
+        <div v-if="hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><QuestionExplanation :question="question" />
         </div>
       </div>
 
@@ -497,10 +505,10 @@ function getBadgeStyle(opt: string) {
           {{ i18n.t('practiceReviewCorrectAnswer') }}
         </div>
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
-          {{ question.answer }}
+          {{ answerText(question) }}
         </div>
-        <div v-if="question.analysis" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span>{{ question.analysis }}
+        <div v-if="hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><QuestionExplanation :question="question" />
         </div>
         <div v-if="aiFeedback" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
           <span class="text-label-sm">{{ i18n.t('practiceAiFeedback') }}：</span>{{ aiFeedback }}
@@ -529,10 +537,10 @@ function getBadgeStyle(opt: string) {
           {{ i18n.t('practiceReviewCorrectAnswer') }}
         </div>
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
-          {{ question.answer }}
+          {{ answerText(question) }}
         </div>
-        <div v-if="question.analysis" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span>{{ question.analysis }}
+        <div v-if="hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+          <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><QuestionExplanation :question="question" />
         </div>
       </div>
     </div>
@@ -547,23 +555,24 @@ function getBadgeStyle(opt: string) {
         {{ i18n.t('practiceReviewCorrectAnswer') }}
       </div>
       <div class="text-sm font-bold" :style="{ color: 'rgb(var(--md-primary))' }">
-        {{ question.answer }}
+        {{ answerText(question) }}
       </div>
     </div>
 
+    <p v-if="submitted && question.correctAnswer === null" class="mt-3 text-sm">Answer unknown — this question is not graded.</p>
     <!-- Analysis for choice types (flashcard preview or submitted) -->
-    <div v-if="showFlashcardPreview && isChoiceType && question.analysis" class="mt-3">
+    <div v-if="showFlashcardPreview && isChoiceType && hasExplanation(question)" class="mt-3">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))', color: 'rgb(var(--md-on-surface-variant))' }">
         <span class="text-label-sm mr-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceReviewAnalysis') }}：</span>
-        {{ question.analysis }}
+        <QuestionExplanation :question="question" />
       </div>
     </div>
 
     <!-- Analysis for choice types (normal submitted) -->
-    <div v-if="submitted && question.analysis && !showFlashcardPreview" class="mt-3">
+    <div v-if="submitted && hasExplanation(question) && !showFlashcardPreview" class="mt-3">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))', color: 'rgb(var(--md-on-surface-variant))' }">
         <span class="text-label-sm mr-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceReviewAnalysis') }}：</span>
-        {{ question.analysis }}
+        <QuestionExplanation :question="question" />
       </div>
     </div>
 

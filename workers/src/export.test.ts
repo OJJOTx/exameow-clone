@@ -1,3 +1,4 @@
+import { normalizeQuestion } from '../../packages/shared/src/questions'
 import { Difficulty, QuestionType } from './types'
 import type { Question } from './types'
 import { generateCsvContent, generateXlsxBuffer } from './export'
@@ -12,13 +13,13 @@ function csvRow(content: string, rowIndex: number): string[] {
 }
 
 const questions: Question[] = [
-  {
-    id: 'q1', type: QuestionType.SingleChoice, stem: 'Populated', options: ['A'], answer: 'A', analysis: '',
+  normalizeQuestion({
+    id: 'q1', type: QuestionType.SingleChoice, stem: 'Populated', options: ['A', 'B'], answer: 'A', analysis: '',
     subject: 'Subject', chapter: 'Chapter', difficulty: Difficulty.Hard,
-  },
-  {
-    id: 'q2', type: QuestionType.ShortAnswer, stem: 'Missing', options: [], answer: 'Answer', analysis: '',
-  },
+  }),
+  normalizeQuestion({
+    id: 'q2', type: QuestionType.ShortAnswer, stem: 'Missing', options: ['A', 'B'], answer: 'Answer', analysis: '',
+  }),
 ]
 
 const csv = generateCsvContent(questions)

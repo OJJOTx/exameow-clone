@@ -1,3 +1,6 @@
+import { normalizeBank, normalizeQuestion, gradeQuestion } from '@exameow/shared'
+import { questionStorage } from '@/utils/questionStorage'
+import { answerText } from '@exameow/shared'
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { QuestionBank, PracticeSession, PracticeMode, MockExamConfig, Question, PracticeFilter } from '@exameow/shared'
@@ -11,7 +14,7 @@ const SESSION_KEY = 'exameow-practice-session'
 
 function loadBanks(): QuestionBank[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = questionStorage.getItem(STORAGE_KEY)
     return raw ? JSON.parse(raw) : []
   } catch {
     return []
@@ -20,13 +23,13 @@ function loadBanks(): QuestionBank[] {
 
 function saveBanks(banks: QuestionBank[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(banks))
+    questionStorage.setItem(STORAGE_KEY, JSON.stringify(banks))
   } catch {}
 }
 
 function loadSession(): PracticeSession | null {
   try {
-    const raw = localStorage.getItem(SESSION_KEY)
+    const raw = questionStorage.getItem(SESSION_KEY)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
@@ -37,9 +40,9 @@ function saveSession(session: PracticeSession | null) {
   try {
     if (session && session.mode === 'wrong') return
     if (session) {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+      questionStorage.setItem(SESSION_KEY, JSON.stringify(session))
     } else {
-      localStorage.removeItem(SESSION_KEY)
+      questionStorage.removeItem(SESSION_KEY)
     }
   } catch {}
 }
@@ -58,31 +61,8 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 function shuffleOptions(questions: Question[]): Question[] {
-  return questions.map(q => {
-    if (q.type === 'single_choice' || q.type === 'multi_choice') {
-      const indices = q.options.map((_, i) => i)
-      const shuffled = shuffleArray(indices)
-      const newOptions = shuffled.map(i => q.options[i] ?? '')
-      const answerMap: Record<string, number> = {}
-      q.options.forEach((opt, i) => { answerMap[String.fromCharCode(65 + i)] = i })
-      const newAnswer = q.answer
-        .toUpperCase()
-        .split('')
-        .filter(ch => /[A-H]/.test(ch))
-        .map(ch => {
-          const oldIdx = answerMap[ch]
-          if (oldIdx !== undefined) {
-            const newIdx = shuffled.indexOf(oldIdx)
-            return newIdx >= 0 ? String.fromCharCode(65 + newIdx) : ch
-          }
-          return ch
-        })
-        .sort()
-        .join('')
-      return { ...q, options: newOptions, answer: newAnswer }
-    }
-    return q
-  })
+  return questions.map(q => q.type === 'single_choice' || q.type === 'multiple_choice'
+    ? { ...q, options: shuffleArray(q.options) } : q)
 }
 
 function applyPracticeFilter(questions: Question[], filter?: PracticeFilter): Question[] {
@@ -116,6 +96,7 @@ export const usePracticeStore = defineStore('practice', () => {
   const importFileName = ref('')
   const importAnalysis = ref<ImportAnalysis | null>(null)
   const importSource = ref('csv')
+  const importedBank = ref<QuestionBank | null>(null)
 
   const hasSession = computed(() => session.value !== null)
   const currentQuestion = computed(() => {
@@ -153,7 +134,7 @@ export const usePracticeStore = defineStore('practice', () => {
   })
 
   function addBank(bank: QuestionBank) {
-    banks.value.push(bank)
+    banks.value.push(normalizeBank(bank))
     saveBanks(banks.value)
   }
 
@@ -171,6 +152,7 @@ export const usePracticeStore = defineStore('practice', () => {
     const today = new Date()
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     const bank: QuestionBank = {
+      schemaVersion: 2,
       id: generateId(),
       name: `AI 出题 - ${dateStr} (${sourceName || '题库'})`,
       questions,
@@ -240,15 +222,6 @@ export const usePracticeStore = defineStore('practice', () => {
     saveSession(session.value)
   }
 
-  function normalizeTF(ans: string): string {
-    const t = ans.trim().toUpperCase()
-    if (['A', '√', '对', '正确', 'TRUE', 'T', '是', 'YES', 'Y', '1'].some(v => t === v.toUpperCase() || t.includes(v))) return 'TRUE'
-    if (['B', '×', '错', '错误', 'FALSE', 'F', '否', 'NO', 'N', '0'].some(v => t === v.toUpperCase() || t.includes(v))) return 'FALSE'
-    if (t === 'TRUE' || t.includes('TRUE') || t.includes('对') || t.includes('正确')) return 'TRUE'
-    if (t === 'FALSE' || t.includes('FALSE') || t.includes('错') || t.includes('错误')) return 'FALSE'
-    return t
-  }
-
   function submitAnswer(answer: string | null): boolean | null {
     if (!session.value) return null
     const item = session.value.questions[session.value.currentIndex]
@@ -257,21 +230,9 @@ export const usePracticeStore = defineStore('practice', () => {
     item.submitted = true
 
     const q = item.question
-    if (q.type === 'single_choice' || q.type === 'multi_choice') {
-      const userAns = (answer ?? '').trim().toUpperCase().replace(/[^A-H]/g, '').split('').sort().join('')
-      const correctAns = q.answer.trim().toUpperCase().replace(/[^A-H]/g, '').split('').sort().join('')
-      item.isCorrect = userAns === correctAns
-    } else if (q.type === 'true_false') {
-      const userAns = normalizeTF(answer ?? '')
-      const correctAns = normalizeTF(q.answer)
-      item.isCorrect = userAns === correctAns
-    } else if (q.type === 'fill_blank') {
-      const userAns = (answer ?? '').trim().toLowerCase()
-      const correctAns = q.answer.trim().toLowerCase()
-      item.isCorrect = userAns !== '' && userAns === correctAns
-    }
+    item.isCorrect = gradeQuestion(q, answer)
 
-    usePracticeHistoryStore().record(q.type, item.isCorrect)
+    if (item.isCorrect !== null) usePracticeHistoryStore().record(q.type, item.isCorrect)
     saveSession(session.value)
     return item.isCorrect
   }
@@ -416,18 +377,34 @@ export const usePracticeStore = defineStore('practice', () => {
     return questions.length
   }
 
-  function confirmImport(): string {
+  async function importJSON(text: string, fileName: string): Promise<number> {
+    cancelImport()
+    const bank = normalizeBank(JSON.parse(text))
+    if (!bank.questions.length) throw new Error('Bank contains no questions')
+    importedBank.value = bank
+    importPreview.value = bank.questions
+    importFileName.value = fileName
+    importSource.value = 'json'
+    return bank.questions.length
+  }
+
+  async function confirmImport(): Promise<string> {
     if (!importPreview.value || importPreview.value.length === 0) return ''
-    const source = importSource.value === 'csv' ? 'csv-import' as const : 'xlsx-import' as const
+    const source = importSource.value === 'json' ? 'json-import' as const : importSource.value === 'csv' ? 'csv-import' as const : 'xlsx-import' as const
     const nameBase = importFileName.value.replace(/\.[^/.]+$/, '')
     const bank: QuestionBank = {
-      id: generateId(),
-      name: nameBase || `Imported bank ${new Date().toLocaleDateString()}`,
+      schemaVersion: 2,
+      id: importedBank.value && !getBank(importedBank.value.id) ? importedBank.value.id : generateId(),
+      name: importedBank.value?.name || nameBase || `Imported bank ${new Date().toLocaleDateString()}`,
       questions: [...importPreview.value],
       createdAt: Date.now(),
       source,
     }
-    addBank(bank)
+    await questionStorage.flush()
+    questionStorage.setItem(STORAGE_KEY, JSON.stringify([...banks.value, bank]))
+    await questionStorage.flush()
+    banks.value.push(bank)
+    importedBank.value = null
     importPreview.value = null
     importFileName.value = ''
     importAnalysis.value = null
@@ -435,6 +412,7 @@ export const usePracticeStore = defineStore('practice', () => {
   }
 
   function cancelImport() {
+    importedBank.value = null
     importPreview.value = null
     importFileName.value = ''
     importAnalysis.value = null
@@ -473,6 +451,7 @@ export const usePracticeStore = defineStore('practice', () => {
     clearSession,
     getElapsedTime,
     formatTime,
+    importJSON,
     importCSV,
     importExcelFile,
     applyImportMapping,

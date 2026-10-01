@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import ContentBlocks from '@/components/common/ContentBlocks.vue'
+
+import { headerText, answerText } from '@exameow/shared'
+
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useScreenRecordStore } from '@/stores/screenRecord'
 import { useI18nStore } from '@/stores/i18n'
@@ -69,8 +73,8 @@ function isCorrect(idx: number): boolean {
   const r = store.currentResult
   if (!r) return false
   const q = r.question
-  if (q.type !== 'single_choice' && q.type !== 'multi_choice') return false
-  const letters = (q.answer ?? '').trim().toUpperCase().replace(/[^A-H]/g, '')
+  if (q.type !== 'single_choice' && q.type !== 'multiple_choice') return false
+  const letters = (answerText(q) ?? '').trim().toUpperCase().replace(/[^A-H]/g, '')
   return letters.includes(String.fromCharCode(65 + idx))
 }
 </script>
@@ -143,12 +147,12 @@ function isCorrect(idx: number): boolean {
           <div class="float-answer">
             <CheckIcon class="w-4 h-4 shrink-0" />
             <span class="text-[13px] font-bold">
-              {{ i18n.t('searchScreenRecordAnswer') }}: {{ store.currentResult.question.answer }}
+              {{ i18n.t('searchScreenRecordAnswer') }}: {{ answerText(store.currentResult.question) }}
             </span>
           </div>
 
           <p class="text-[13px] leading-snug line-clamp-3" style="color: var(--fg);">
-            {{ store.currentResult.question.stem }}
+            <ContentBlocks :blocks="store.currentResult.question.questionHeader" />
           </p>
 
           <div v-if="store.currentResult.question.options?.length" class="space-y-1">
@@ -161,7 +165,7 @@ function isCorrect(idx: number): boolean {
               <span class="float-letter" :class="{ 'float-letter-correct': isCorrect(idx) }">
                 {{ String.fromCharCode(65 + idx) }}
               </span>
-              <span class="truncate text-[12px]">{{ opt }}</span>
+              <span class="truncate text-[12px]"><ContentBlocks :blocks="[opt.content]" /></span>
             </div>
           </div>
 

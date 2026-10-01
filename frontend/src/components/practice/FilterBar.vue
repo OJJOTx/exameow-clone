@@ -21,7 +21,7 @@ const i18n = useI18nStore()
 
 const typeKeys: Record<string, string> = {
   single_choice: 'typeSingle',
-  multi_choice: 'typeMulti',
+  multiple_choice: 'typeMulti',
   true_false: 'typeTrueFalse',
   fill_blank: 'typeFillBlank',
   short_answer: 'typeShortAnswer',
