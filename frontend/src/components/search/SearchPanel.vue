@@ -24,7 +24,7 @@ const i18n = useI18nStore()
 const practiceStore = usePracticeStore()
 const configStore = useConfigStore()
 
-const ALL_TYPES = ['single_choice', 'multi_choice', 'true_false', 'fill_blank', 'short_answer'] as QuestionType[]
+const ALL_TYPES = ['single_choice', 'multiple_choice', 'true_false', 'fill_blank', 'short_answer'] as QuestionType[]
 
 const { selectedBankIds, scope, selectedTypes } = useSearchSettings()
 const showSettings = ref(false)

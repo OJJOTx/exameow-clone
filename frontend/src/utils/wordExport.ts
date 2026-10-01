@@ -1,3 +1,4 @@
+import { headerText, answerText, explanationText, blockText } from '@exameow/shared'
 import type { Question, QuestionBank } from '@exameow/shared'
 
 /**
@@ -9,13 +10,13 @@ import type { Question, QuestionBank } from '@exameow/shared'
 
 const TYPE_LABELS: Record<string, string> = {
   single_choice: '单选题',
-  multi_choice: '多选题',
+  multiple_choice: '多选题',
   fill_blank: '填空题',
   true_false: '判断题',
   short_answer: '简答题',
 }
 
-const SECTION_ORDER = ['single_choice', 'multi_choice', 'fill_blank', 'true_false', 'short_answer']
+const SECTION_ORDER = ['single_choice', 'multiple_choice', 'fill_blank', 'true_false', 'short_answer']
 const CN_NUM = ['一', '二', '三', '四', '五', '六']
 const OPT_LETTERS = 'ABCDEFGH'
 
@@ -57,16 +58,16 @@ function buildPaperBody(questions: Question[], withAnswers: boolean, withAnalysi
     body += `<h2 class="section">${cnSectionIndex(t)}、${TYPE_LABELS[t] ?? t}${scoreNote}(共 ${qs.length} 题)</h2>`
     for (const q of qs) {
       num += 1
-      body += `<p class="q"><b>${num}.</b> ${esc(q.stem)}</p>`
+      body += `<p class="q"><b>${num}.</b> ${esc(headerText(q))}</p>`
       if (q.options && q.options.length > 0) {
         for (let i = 0; i < q.options.length; i++) {
-          body += `<p class="opt">${OPT_LETTERS[i]}. ${esc(q.options[i] ?? '')}</p>`
+          body += `<p class="opt">${OPT_LETTERS[i]}. ${esc(blockText(q.options[i]?.content))}</p>`
         }
       }
       if (withAnswers) {
-        body += `<p class="answer"><b>参考答案：</b>${esc(q.answer)}</p>`
-        if (withAnalysis && q.analysis) {
-          body += `<p class="analysis"><b>解析：</b>${esc(q.analysis)}</p>`
+        body += `<p class="answer"><b>参考答案：</b>${esc(answerText(q))}</p>`
+        if (withAnalysis && explanationText(q)) {
+          body += `<p class="analysis"><b>解析：</b>${esc(explanationText(q))}</p>`
         }
       }
     }

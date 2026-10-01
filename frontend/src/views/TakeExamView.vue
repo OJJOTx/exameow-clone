@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { selectionText, selectedIds } from '@exameow/shared'
+import ContentBlocks from '@/components/common/ContentBlocks.vue'
+import QuestionExplanation from '@/components/common/QuestionExplanation.vue'
+import { hasExplanation } from '@exameow/shared'
+
+import { headerText, answerText, explanationText } from '@exameow/shared'
+
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
@@ -50,9 +57,12 @@ async function sendReport() {
 }
 let timer: ReturnType<typeof setInterval> | null = null
 
+const displayedOptions = computed(() => currentQuestion.value?.type === 'true_false'
+  ? [{ id: 'True', content: { type: 'text' as const, content: 'True' } }, { id: 'False', content: { type: 'text' as const, content: 'False' } }]
+  : currentQuestion.value?.options ?? [])
 const optionLabels = 'ABCDEFGH'.split('')
-const isMulti = (t: string) => t === 'multi_choice'
-const isChoice = (t: string) => ['single_choice', 'multi_choice', 'true_false'].includes(t)
+const isMulti = (t: string) => t === 'multiple_choice'
+const isChoice = (t: string) => ['single_choice', 'multiple_choice', 'true_false'].includes(t)
 
 const currentQuestion = computed(() => exam.value?.questions[currentIndex.value] ?? null)
 const isFirst = computed(() => currentIndex.value <= 0)
@@ -77,7 +87,7 @@ const timeText = computed(() => {
 const typeLabel = (t: string): string => {
   const labels: Record<string, string> = {
     single_choice: i18n.t('typeSingle'),
-    multi_choice: i18n.t('typeMulti'),
+    multiple_choice: i18n.t('typeMulti'),
     true_false: i18n.t('typeTrueFalse'),
     fill_blank: i18n.t('typeFillBlank'),
     short_answer: i18n.t('typeShortAnswer'),
@@ -86,20 +96,19 @@ const typeLabel = (t: string): string => {
 }
 
 function isSelected(qid: string, label: string, multi: boolean): boolean {
-  const a = answers.value[qid] || ''
-  if (multi) return a.includes(label)
-  return a === label
+  const answer = answers.value[qid] || ''
+  const q = exam.value?.questions.find(q => q.id === qid)
+  return q?.type === 'true_false' ? answer === label : selectedIds(answer).includes(label)
 }
 
 function select(qid: string, label: string, multi: boolean) {
   if (result.value) return
-  if (!multi) {
-    answers.value[qid] = label
-    return
-  }
-  const cur = answers.value[qid] || ''
-  const next = cur.includes(label) ? cur.replace(label, '') : (cur + label).split('').sort().join('')
-  answers.value[qid] = next
+  const q = exam.value?.questions.find(q => q.id === qid)
+  if (q?.type === 'true_false') { answers.value[qid] = label; return }
+  const ids = new Set(multi ? selectedIds(answers.value[qid]) : [])
+  if (multi && ids.has(label)) ids.delete(label)
+  else ids.add(label)
+  answers.value[qid] = ids.size ? JSON.stringify([...ids]) : ''
 }
 
 function optionStyle(qid: string, label: string, multi: boolean) {
@@ -394,21 +403,21 @@ onUnmounted(() => {
           >{{ typeLabel(currentQuestion.type) }}</span>
         </div>
 
-        <div class="text-body-lg mb-5" style="color: rgb(var(--md-on-surface))">{{ currentQuestion.stem }}</div>
+        <div class="text-body-lg mb-5" style="color: rgb(var(--md-on-surface))"><ContentBlocks :blocks="currentQuestion.questionHeader" /></div>
 
         <div v-if="isChoice(currentQuestion.type)" class="space-y-2">
           <button
-            v-for="(opt, oi) in currentQuestion.options"
+            v-for="(opt, oi) in displayedOptions"
             :key="oi"
             class="w-full text-left p-3 rounded-xl border transition-all duration-200 flex items-center gap-3"
-            :style="optionStyle(currentQuestion.id, optionLabels[oi]!, isMulti(currentQuestion.type))"
-            @click="select(currentQuestion.id, optionLabels[oi]!, isMulti(currentQuestion.type))"
+            :style="optionStyle(currentQuestion.id, opt.id, isMulti(currentQuestion.type))"
+            @click="select(currentQuestion.id, opt.id, isMulti(currentQuestion.type))"
           >
             <div
               class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              :style="badgeStyle(currentQuestion.id, optionLabels[oi]!, isMulti(currentQuestion.type))"
+              :style="badgeStyle(currentQuestion.id, opt.id, isMulti(currentQuestion.type))"
             >{{ optionLabels[oi] }}</div>
-            <span class="text-sm" style="color: rgb(var(--md-on-surface))">{{ opt }}</span>
+            <span class="text-sm" style="color: rgb(var(--md-on-surface))"><ContentBlocks :blocks="[opt.content]" /></span>
           </button>
         </div>
         <input
@@ -491,14 +500,14 @@ onUnmounted(() => {
                 : { backgroundColor: 'rgb(var(--md-primary-container))', color: 'rgb(var(--md-on-primary-container))' }"
             >{{ i + 1 }}</span>
             <div class="flex-1 min-w-0">
-              <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))">{{ g.question.stem }}</div>
+              <div class="text-sm mb-2" style="color: rgb(var(--md-on-surface))"><ContentBlocks :blocks="g.question.questionHeader" /></div>
               <div class="text-label-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takeYourAnswer') }}</div>
               <div class="text-sm mb-2" :style="{ color: g.isCorrect === false ? 'rgb(var(--md-error))' : 'rgb(var(--md-on-surface))' }">
-                {{ g.userAnswer || i18n.t('takeUnanswered') }}
+                {{ selectionText(g.question, g.userAnswer) || i18n.t('takeUnanswered') }}
               </div>
               <div class="text-label-sm" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('takeCorrectAnswer') }}</div>
-              <div class="text-sm mb-2" style="color: rgb(var(--md-primary))">{{ g.question.answer }}</div>
-              <div v-if="g.question.analysis" class="text-xs" style="color: rgb(var(--md-on-surface-variant))">{{ g.question.analysis }}</div>
+              <div class="text-sm mb-2" style="color: rgb(var(--md-primary))">{{ answerText(g.question) }}</div>
+              <div v-if="hasExplanation(g.question)" class="text-xs" style="color: rgb(var(--md-on-surface-variant))"><QuestionExplanation :question="g.question" /></div>
             </div>
           </div>
         </div>

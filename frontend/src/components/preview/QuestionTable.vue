@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import ContentBlocks from '@/components/common/ContentBlocks.vue'
+import QuestionExplanation from '@/components/common/QuestionExplanation.vue'
+import { headerText, answerText, explanationText, blockText } from '@exameow/shared'
+
 import { computed } from 'vue'
 import type { Question } from '@exameow/shared'
 import { useI18nStore } from '@/stores/i18n'
@@ -7,14 +11,14 @@ const i18n = useI18nStore()
 const props = defineProps<{ questions: Question[] }>()
 
 const typeLabel: Record<string, string> = {
-  single_choice: 'typeSingle', multi_choice: 'typeMulti',
+  single_choice: 'typeSingle', multiple_choice: 'typeMulti',
   true_false: 'typeTrueFalse', fill_blank: 'typeFillBlank',
   short_answer: 'typeShortAnswer',
 }
 
 const typeColor: Record<string, string> = {
   single_choice: 'rgb(var(--md-primary))',
-  multi_choice: 'rgb(var(--md-tertiary))',
+  multiple_choice: 'rgb(var(--md-tertiary))',
   true_false: '#B06A00',
   fill_blank: '#1B6D3C',
   short_answer: '#A8365A',
@@ -22,7 +26,7 @@ const typeColor: Record<string, string> = {
 
 const typeBg: Record<string, string> = {
   single_choice: 'rgba(var(--md-primary) / 0.12)',
-  multi_choice: 'rgba(var(--md-tertiary) / 0.12)',
+  multiple_choice: 'rgba(var(--md-tertiary) / 0.12)',
   true_false: 'rgba(176,106,0 / 0.12)',
   fill_blank: 'rgba(27,109,60 / 0.12)',
   short_answer: 'rgba(168,54,90 / 0.12)',
@@ -30,12 +34,13 @@ const typeBg: Record<string, string> = {
 
 const rows = computed(() =>
   props.questions.map((q, i) => ({
+    question: q,
     id: q.id || `${i + 1}`,
     qtype: q.type,
-    stem: q.stem,
-    options: q.options.join(' · '),
-    answer: q.answer,
-    analysis: q.analysis,
+    stem: headerText(q),
+    options: q.options.map(o => blockText(o.content)).join(' · '),
+    answer: answerText(q),
+    analysis: explanationText(q),
   })),
 )
 </script>
@@ -74,14 +79,14 @@ const rows = computed(() =>
               </span>
             </td>
             <td class="px-3 sm:px-5 py-2 sm:py-3 font-medium" style="color: rgb(var(--md-on-surface))">
-              <div class="line-clamp-3">{{ row.stem }}</div>
+              <div class="line-clamp-3"><ContentBlocks :blocks="row.question.questionHeader" /></div>
             </td>
             <td class="px-3 sm:px-5 py-2 sm:py-3 text-body-sm hidden sm:table-cell" style="color: rgb(var(--md-on-surface-variant))">
-              <div class="line-clamp-2">{{ row.options || '-' }}</div>
+              <div class="line-clamp-2"><span v-for="option in row.question.options" :key="option.id" class="block"><ContentBlocks :blocks="[option.content]" /></span></div>
             </td>
             <td class="px-3 sm:px-5 py-2 sm:py-3 font-semibold whitespace-nowrap" style="color: #1B6D3C">{{ row.answer }}</td>
             <td class="px-3 sm:px-5 py-2 sm:py-3 text-body-sm hidden sm:table-cell" style="color: rgb(var(--md-on-surface-variant))">
-              <div class="line-clamp-2">{{ row.analysis || '-' }}</div>
+              <div class="line-clamp-2"><QuestionExplanation :question="row.question" /></div>
             </td>
           </tr>
         </tbody>

@@ -1,3 +1,4 @@
+import { headerText } from '@exameow/shared'
 import { Difficulty } from '@exameow/shared'
 import * as XLSX from 'xlsx'
 import { analyzeCSV, analyzeExcel, parseWithMapping } from './importParser.ts'
@@ -36,13 +37,13 @@ assertEqual(parseWithMapping(headerlessCanonical, headerlessCanonical.mapping, '
 
 const multiRowCanonical = analyzeCSV([
   'First question,single_choice,A,B,C,D,E,F,G,H,A,,Physics,Chapter 1,hard',
-  'Second question,multi_choice,A,B,C,D,E,F,G,H,A,B,Physics,Chapter 2,medium',
+  'Second question,multiple_choice,A,B,C,D,E,F,G,H,A,B,Physics,Chapter 2,medium',
 ].join('\n'))
 if (!multiRowCanonical) throw new Error('expected multi-row headerless canonical CSV analysis')
 assertEqual(multiRowCanonical.hasHeader, false, 'multi-row headerless canonical format')
 const multiRowQuestions = parseWithMapping(multiRowCanonical, multiRowCanonical.mapping, 'test')
 assertEqual(multiRowQuestions.length, 2, 'multi-row headerless canonical retains first row')
-assertEqual(multiRowQuestions[0]?.stem, 'First question', 'multi-row headerless canonical first stem')
+assertEqual(headerText(multiRowQuestions[0]!), 'First question', 'multi-row headerless canonical first stem')
 assertEqual(multiRowQuestions[0]?.difficulty, Difficulty.Hard, 'multi-row headerless canonical difficulty')
 assertEqual(multiRowQuestions[1]?.difficulty, Difficulty.Medium, 'multi-row headerless canonical second difficulty')
 

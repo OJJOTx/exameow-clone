@@ -25,7 +25,7 @@ const TYPE_ORDER: QuestionType[] = [
 
 const TYPE_LABEL_KEYS: Record<string, 'typeSingle' | 'typeMulti' | 'typeTrueFalse' | 'typeFillBlank' | 'typeShortAnswer'> = {
   single_choice: 'typeSingle',
-  multi_choice: 'typeMulti',
+  multiple_choice: 'typeMulti',
   true_false: 'typeTrueFalse',
   fill_blank: 'typeFillBlank',
   short_answer: 'typeShortAnswer',
