@@ -1,3 +1,4 @@
+import { normalizeQuestion } from '../../packages/shared/src/questions'
 import { Difficulty, QuestionType } from './types'
 import { generateExam, normalizeQuestionDifficulty } from './exam'
 import type { Ai } from '@cloudflare/workers-types'
@@ -12,25 +13,25 @@ function assertOk(value: boolean, message: string): void {
 }
 
 const questions: Question[] = [
-  {
-    id: 'q1', type: QuestionType.SingleChoice, stem: 'One?', options: ['A'], answer: 'A', analysis: '',
-  },
-  {
+  normalizeQuestion({
+    id: 'q1', type: QuestionType.SingleChoice, stem: 'One?', options: ['A', 'B'], answer: 'A', analysis: '',
+  }),
+  normalizeQuestion({
     id: 'q2', type: QuestionType.TrueFalse, stem: 'Two?', options: ['True', 'False'], answer: 'True', analysis: '',
     difficulty: Difficulty.Easy,
-  },
+  }),
 ]
 
 const normalized = normalizeQuestionDifficulty(questions, Difficulty.Hard)
 assertOk(normalized.every((question) => question.difficulty === Difficulty.Hard), 'normalized questions should have the requested difficulty')
 
 const aiResponse = [
-  {
+  normalizeQuestion({
     id: 'q1', type: QuestionType.SingleChoice, stem: 'One?', options: ['A', 'B'], answer: 'A', analysis: '',
-  },
-  {
+  }),
+  normalizeQuestion({
     id: 'q2', type: QuestionType.TrueFalse, stem: 'Two?', options: ['True', 'False'], answer: 'True', analysis: '', difficulty: Difficulty.Easy,
-  },
+  }),
 ]
 
 const mockAi = {

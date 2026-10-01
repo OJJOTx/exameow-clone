@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ContentBlocks from '@/components/common/ContentBlocks.vue'
+import { headerText, answerText, explanationText, blockText } from '@exameow/shared'
+
 import { ref, computed } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { usePracticeStore } from '@/stores/practice'
@@ -33,7 +36,7 @@ const previewHeaders = computed(() => {
     headers.push(i18n.t('practiceImportColStem'))
     if (first.options.length > 0) headers.push(i18n.t('tableOptions'))
     headers.push(i18n.t('practiceImportColAnswer'))
-    if (first.analysis) headers.push(i18n.t('practiceImportColAnalysis'))
+    if (explanationText(first)) headers.push(i18n.t('practiceImportColAnalysis'))
   }
   return headers
 })
@@ -44,17 +47,18 @@ const previewData = computed(() => {
   return qs.slice(0, 5).map(q => {
     const typeLabels: Record<string, string> = {
       single_choice: '单选',
-      multi_choice: '多选',
+      multiple_choice: '多选',
       true_false: '判断',
       fill_blank: '填空',
       short_answer: '简答',
     }
     return {
+      question: q,
       type: typeLabels[q.type] ?? q.type,
-      stem: q.stem.length > 40 ? q.stem.slice(0, 40) + '...' : q.stem,
-      options: q.options.join(' / '),
-      answer: q.answer.length > 20 ? q.answer.slice(0, 20) + '...' : q.answer,
-      analysis: q.analysis.length > 20 ? q.analysis.slice(0, 20) + '...' : q.analysis,
+      stem: headerText(q).length > 40 ? headerText(q).slice(0, 40) + '...' : headerText(q),
+      options: q.options.map(o => blockText(o.content)).join(' / '),
+      answer: answerText(q).length > 20 ? answerText(q).slice(0, 20) + '...' : answerText(q),
+      analysis: explanationText(q).length > 20 ? explanationText(q).slice(0, 20) + '...' : explanationText(q),
     }
   })
 })
@@ -66,7 +70,7 @@ async function handleFileSelect(e: Event) {
   parseError.value = ''
 
   const ext = file.name.split('.').pop()?.toLowerCase()
-  if (ext !== 'csv' && ext !== 'xlsx' && ext !== 'xls') {
+  if (ext !== 'json' && ext !== 'csv' && ext !== 'xlsx' && ext !== 'xls') {
     parseError.value = 'Unsupported file type'
     return
   }
@@ -76,14 +80,17 @@ async function handleFileSelect(e: Event) {
 
   try {
     const buffer = await file.arrayBuffer()
-    if (ext === 'csv') {
+    if (ext === 'json') {
+      await practiceStore.importJSON(new TextDecoder().decode(buffer), file.name)
+    } else if (ext === 'csv') {
       const text = new TextDecoder().decode(buffer)
       await practiceStore.importCSV(text, file.name)
     } else {
       await practiceStore.importExcelFile(buffer, file.name)
     }
-  } catch {
-    parseError.value = i18n.t('practiceImportFail')
+  } catch (e) {
+    practiceStore.cancelImport()
+    parseError.value = e instanceof Error ? e.message : i18n.t('practiceImportFail')
   } finally {
     parsing.value = false
   }
@@ -100,9 +107,9 @@ function handleMappingApply(mapping: ColumnMapping) {
   practiceStore.applyImportMapping(mapping)
 }
 
-function handleConfirm() {
+async function handleConfirm() {
   const count = practiceStore.importPreview?.length ?? 0
-  practiceStore.confirmImport()
+  try { await practiceStore.confirmImport() } catch (e) { parseError.value = String(e); return }
   selectedFile.value = null
   if (fileInput.value) fileInput.value.value = ''
   emit('imported', count)
@@ -124,7 +131,7 @@ function handleConfirm() {
     <input
       ref="fileInput"
       type="file"
-      accept=".csv,.xlsx,.xls"
+      accept=".json,.csv,.xlsx,.xls"
       class="hidden"
       @change="handleFileSelect"
     />
@@ -138,7 +145,7 @@ function handleConfirm() {
         {{ i18n.t('practiceChooseFile') }}
       </div>
       <div class="text-body-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
-        {{ i18n.t('practiceFileHint') }}
+        JSON (embedded images), CSV, XLSX, XLS
       </div>
     </div>
 
@@ -213,7 +220,7 @@ function handleConfirm() {
                   }"
                 >{{ row.type }}</span>
               </td>
-              <td class="p-2 text-body-sm" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ row.stem }}</td>
+              <td class="p-2 text-body-sm" :style="{ color: 'rgb(var(--md-on-surface))' }"><ContentBlocks :blocks="row.question.questionHeader" /><span v-for="option in row.question.options" :key="option.id" class="block"><ContentBlocks :blocks="[option.content]" /></span></td>
               <td class="p-2 text-body-sm" :style="{ color: 'rgb(var(--md-on-surface))' }">{{ row.answer }}</td>
             </tr>
           </tbody>

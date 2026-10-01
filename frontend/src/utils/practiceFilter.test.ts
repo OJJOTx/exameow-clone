@@ -1,3 +1,4 @@
+import { normalizeQuestion } from '@exameow/shared'
 import { Difficulty, QuestionType } from '@exameow/shared'
 import type { MockExamConfig, PracticeSession, Question } from '@exameow/shared'
 import { getResumedPracticeSettings, matchPracticeFilter, normalizeMockQuestionCount, reconcileMockConfig, reconcileMockTypeCounts, UNMARKED_DIFFICULTY } from './practiceFilter.ts'
@@ -6,14 +7,14 @@ function assertEqual(actual: boolean, expected: boolean) {
   if (actual !== expected) throw new Error(`Expected ${expected}, received ${actual}`)
 }
 
-const q: Question = {
+const q: Question = normalizeQuestion({
   id: 'q1',
   type: QuestionType.SingleChoice,
   stem: 'Question',
-  options: [],
+  options: ['A', 'B'],
   answer: 'A',
   analysis: '',
-}
+})
 
 assertEqual(matchPracticeFilter({ ...q, difficulty: Difficulty.Easy }, { difficulties: [Difficulty.Easy] }), true)
 assertEqual(matchPracticeFilter({ ...q, difficulty: Difficulty.Easy }, { difficulties: [Difficulty.Hard] }), false)

@@ -7,11 +7,11 @@ import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseMultiSelect from '@/components/common/BaseMultiSelect.vue'
 import type { QuestionType } from '@exameow/shared'
 
-const ALL_TYPES = ['single_choice', 'multi_choice', 'true_false', 'fill_blank', 'short_answer'] as QuestionType[]
+const ALL_TYPES = ['single_choice', 'multiple_choice', 'true_false', 'fill_blank', 'short_answer'] as QuestionType[]
 
 const typeLabelKeys: Record<string, 'typeSingle' | 'typeMulti' | 'typeTrueFalse' | 'typeFillBlank' | 'typeShortAnswer'> = {
   single_choice: 'typeSingle',
-  multi_choice: 'typeMulti',
+  multiple_choice: 'typeMulti',
   true_false: 'typeTrueFalse',
   fill_blank: 'typeFillBlank',
   short_answer: 'typeShortAnswer',

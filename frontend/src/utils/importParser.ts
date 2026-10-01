@@ -1,3 +1,4 @@
+import { normalizeQuestion } from '@exameow/shared'
 import type { Question } from '@exameow/shared'
 import { Difficulty, QuestionType as QT } from '@exameow/shared'
 import * as XLSX from 'xlsx'
@@ -5,7 +6,7 @@ import * as XLSX from 'xlsx'
 type QuestionType = typeof QT[keyof typeof QT]
 
 const ST: QuestionType = 'single_choice' as QuestionType
-const MT: QuestionType = 'multi_choice' as QuestionType
+const MT: QuestionType = 'multiple_choice' as QuestionType
 const TF: QuestionType = 'true_false' as QuestionType
 const FB: QuestionType = 'fill_blank' as QuestionType
 const SA: QuestionType = 'short_answer' as QuestionType
@@ -421,7 +422,7 @@ export function parseWithMapping(analysis: ImportAnalysis, mapping: ColumnMappin
       if (inferred) qtype = inferred
     }
 
-    questions.push({
+    questions.push(normalizeQuestion({
       id: `${source}-${i + 1}`,
       type: qtype,
       stem,
@@ -431,7 +432,7 @@ export function parseWithMapping(analysis: ImportAnalysis, mapping: ColumnMappin
       subject: mapping.subject !== null ? (row[mapping.subject] ?? '').trim() || undefined : undefined,
       chapter: mapping.chapter !== null ? (row[mapping.chapter] ?? '').trim() || undefined : undefined,
       difficulty,
-    })
+    }))
   }
 
   return questions

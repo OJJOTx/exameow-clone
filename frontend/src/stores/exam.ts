@@ -1,3 +1,5 @@
+import { questionStorage } from '@/utils/questionStorage'
+import { normalizeQuestion } from '@exameow/shared'
 import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
 import type { ExamParams, Question, QuestionType, Difficulty } from '@exameow/shared'
@@ -12,7 +14,7 @@ import { computeBatchSpecs, splitTextChunk } from '@/utils/chunking'
 
 const ALL_TYPES: QuestionType[] = [
   'single_choice' as QuestionType,
-  'multi_choice' as QuestionType,
+  'multiple_choice' as QuestionType,
   'true_false' as QuestionType,
   'fill_blank' as QuestionType,
   'short_answer' as QuestionType,
@@ -81,8 +83,8 @@ export const useExamStore = defineStore('exam', () => {
 
   function loadCachedQuestions(): Question[] {
     try {
-      const cached = localStorage.getItem('exameow-questions')
-      if (cached) return JSON.parse(cached)
+      const cached = questionStorage.getItem('exameow-questions')
+      if (cached) return JSON.parse(cached).map(normalizeQuestion)
     } catch {}
     return []
   }
@@ -93,7 +95,7 @@ export const useExamStore = defineStore('exam', () => {
 
   function saveCachedQuestions() {
     try {
-      localStorage.setItem('exameow-questions', JSON.stringify(questions.value))
+      questionStorage.setItem('exameow-questions', JSON.stringify(questions.value))
       localStorage.setItem('exameow-sourcefile', sourceFileName.value)
     } catch {}
   }
@@ -476,7 +478,7 @@ export const useExamStore = defineStore('exam', () => {
     subject.value = ''
     extraPrompt.value = ''
     summary.value = null
-    try { localStorage.removeItem('exameow-questions'); localStorage.removeItem('exameow-sourcefile') } catch {}
+    try { questionStorage.removeItem('exameow-questions'); localStorage.removeItem('exameow-sourcefile') } catch {}
   }
 
   return {

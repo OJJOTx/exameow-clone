@@ -1,3 +1,4 @@
+import { normalizeQuestion } from '@exameow/shared'
 import type { Question, Difficulty } from '@exameow/shared'
 
 function extractBatchFileLabel(text: string): string {
@@ -17,7 +18,7 @@ export function tagQuestions(
 ): Question[] {
   const chapter = topicFilter.trim() || extractBatchFileLabel(batchText) || sourceFileName.trim() || undefined
   const normalizedSubject = subject.trim() || undefined
-  return questions.map(question => ({
+  return questions.map(normalizeQuestion).map(question => ({
     ...question,
     subject: normalizedSubject,
     chapter: autoChapter

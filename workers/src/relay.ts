@@ -1,3 +1,4 @@
+import { normalizeQuestion, gradeQuestion, publicQuestion } from '../../packages/shared/src/questions'
 import type {
   ExamResultEntry,
   ExamResultsResponse,
@@ -74,7 +75,7 @@ export async function readExam(db: D1Database, code: string): Promise<StoredExam
   if (!row) return null
   const exam: StoredExam = {
     title: row.title,
-    questions: JSON.parse(row.questions) as Question[],
+    questions: JSON.parse(row.questions).map(normalizeQuestion),
     startAt: row.start_at,
     endAt: row.end_at,
     durationMinutes: row.duration_minutes,
@@ -117,7 +118,7 @@ export async function handlePublish(
   const req = body as Partial<PublishExamRequest>
   if (typeof req.title !== 'string') return json({ error: 'Title is required' }, 400)
   const title = req.title.trim()
-  const questions = req.questions
+  let questions = req.questions
   const { startAt, endAt, durationMinutes } = req
 
   if (!title) return json({ error: 'Title is required' }, 400)
@@ -135,6 +136,7 @@ export async function handlePublish(
   ) {
     return json({ error: 'Invalid time window or duration' }, 400)
   }
+  try { questions = questions.map(normalizeQuestion) } catch (e) { return json({ error: String(e) }, 400) }
   const payload = JSON.stringify(questions)
   if (payload.length > MAX_EXAM_PAYLOAD_BYTES) {
     return json({ error: 'Payload too large' }, 400)
@@ -170,33 +172,8 @@ export async function handlePublish(
   return json(res)
 }
 
-function normalizeChoice(s: string): string {
-  return s.trim().toUpperCase().replace(/[^A-H]/g, '').split('').sort().join('')
-}
-
-function isTrueAnswer(a: string): boolean {
-  const t = a.trim()
-  return ['A', '√', '对', '正确', 'TRUE', 'T', '是', 'YES', 'Y', '1'].some(
-    (v) =>
-      t.toUpperCase() === v.toUpperCase() ||
-      (v.length > 1 && t.includes(v) && !/[不非错没]/.test(t.replace(v, ''))),
-  )
-}
-
 function grade(q: Question, user: string | undefined): boolean | null {
-  if (q.type === 'short_answer') return null
-  if (!user || !user.trim()) return false
-  switch (q.type) {
-    case 'single_choice':
-    case 'multi_choice':
-      return normalizeChoice(user) === normalizeChoice(q.answer)
-    case 'true_false':
-      return isTrueAnswer(user) === isTrueAnswer(q.answer)
-    case 'fill_blank':
-      return user.trim().toLowerCase() === q.answer.trim().toLowerCase()
-    default:
-      return false
-  }
+  return gradeQuestion(q, user)
 }
 
 function windowCheck(exam: StoredExam): Response | null {
@@ -212,9 +189,7 @@ export async function handleGetExam(db: D1Database, code: string): Promise<Respo
   if (exam.suspended) return json({ error: 'reported' }, 403)
   const deny = windowCheck(exam)
   if (deny) return deny
-  const publicQuestions: PublicQuestion[] = exam.questions.map(
-    ({ id, type, stem, options }) => ({ id, type, stem, options }),
-  )
+  const publicQuestions: PublicQuestion[] = exam.questions.map(publicQuestion)
   const info: PublishedExamInfo = {
     title: exam.title,
     questions: publicQuestions,

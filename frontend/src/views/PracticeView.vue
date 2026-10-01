@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { headerText, answerText, explanationText, blockText } from '@exameow/shared'
+
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { usePracticeStore } from '@/stores/practice'
@@ -267,7 +269,7 @@ const availableTypes = computed(() => {
   }
   const typeKeys: Record<string, string> = {
     single_choice: 'typeSingle',
-    multi_choice: 'typeMulti',
+    multiple_choice: 'typeMulti',
     true_false: 'typeTrueFalse',
     fill_blank: 'typeFillBlank',
     short_answer: 'typeShortAnswer',
@@ -475,6 +477,11 @@ async function handleAiExplain() {
   const item = practiceStore.currentQuestion
   if (!item || !item.submitted || aiExplaining.value) return
 
+  if ([...item.question.questionHeader, ...item.question.options.map(o => o.content)].some(b => b.type === 'image')) {
+    aiExplainError.value = 'AI assistance for image questions requires a vision-capable integration. You can still answer and review this question normally.'
+    return
+  }
+
   if (!configStore.configured) {
     await configStore.loadSaved()
     if (!configStore.configured) {
@@ -490,12 +497,12 @@ async function handleAiExplain() {
   const qIndex = practiceStore.session?.currentIndex
   const q = item.question
   const optionsText = q.options.length
-    ? '\n' + q.options.map((o, i) => `${String.fromCharCode(65 + i)}. ${o}`).join('\n')
+    ? '\n' + q.options.map((o, i) => `${String.fromCharCode(65 + i)}. ${blockText(o.content)}`).join('\n')
     : ''
   const params = {
-    stem: q.stem + optionsText,
-    reference_answer: q.answer,
-    analysis: q.analysis || undefined,
+    stem: headerText(q) + optionsText,
+    reference_answer: answerText(q),
+    analysis: explanationText(q) || undefined,
   }
 
   try {
@@ -521,6 +528,11 @@ async function handleAiJudge() {
   const item = practiceStore.currentQuestion
   if (!item || !item.userAnswer || aiJudging.value || item.submitted) return
 
+  if ([...item.question.questionHeader, ...item.question.options.map(o => o.content)].some(b => b.type === 'image')) {
+    aiJudgeError.value = 'AI assistance for image questions requires a vision-capable integration. You can still answer and review this question normally.'
+    return
+  }
+
   if (!configStore.configured) {
     await configStore.loadSaved()
     if (!configStore.configured) {
@@ -537,9 +549,9 @@ async function handleAiJudge() {
   const qIndex = practiceStore.session?.currentIndex
   const q = item.question
   const params = {
-    stem: q.stem,
-    reference_answer: q.answer,
-    analysis: q.analysis || undefined,
+    stem: headerText(q),
+    reference_answer: answerText(q),
+    analysis: explanationText(q) || undefined,
     user_answer: item.userAnswer,
   }
 

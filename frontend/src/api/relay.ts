@@ -1,3 +1,4 @@
+import { normalizeQuestion, publicQuestion, migrateSelection } from '@exameow/shared'
 import type {
   ExamResultsResponse,
   PublishExamRequest,
@@ -37,6 +38,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       typeof data.startAt === 'number' ? data.startAt : undefined,
     )
   }
+  const migrateGraded = (g: any) => {
+    const legacy = !g.question.questionHeader
+    const question = normalizeQuestion(g.question)
+    return { ...g, question, userAnswer: legacy ? migrateSelection(question, g.userAnswer) : g.userAnswer }
+  }
+  if (Array.isArray(data.graded)) data.graded = data.graded.map(migrateGraded)
+  if (Array.isArray(data.questions)) data.questions = data.questions.map((q: any) => {
+    if (q.correctAnswer !== undefined || q.answer !== undefined) return normalizeQuestion(q)
+    return publicQuestion(normalizeQuestion({ ...q, ...(q.questionHeader ? { correctAnswer: null } : { answer: '' }) }))
+  })
   return data as T
 }
 

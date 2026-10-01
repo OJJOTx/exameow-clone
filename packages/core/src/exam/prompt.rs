@@ -20,15 +20,15 @@ pub fn build_system_prompt(auto_chapter: bool) -> String {
 2. Each question object MUST have these required fields:
    - "id": a short unique identifier string
    - "type": one of [{}]
-   - "stem": the question text
-   - "options": array of option strings (required for single_choice/multi_choice/true_false; empty array for others)
-   - "answer": the correct answer
-   - "analysis": brief explanation of the answer (can be empty string for fill_blank/short_answer)
-3. For single_choice: exactly 4 options, one correct.
-4. For multi_choice: exactly 4 options, at least one correct (list correct letters separated by comma in answer).
-5. For true_false: options ["True", "False"], answer is "True" or "False".
-6. For fill_blank: answer is the exact word/phrase to fill in.
-7. For short_answer: answer is a concise reference answer.
+   - "questionHeader": an ordered array of text blocks, e.g. [{{"type":"text","format":"plain","content":"Question text"}}]
+   - "options": an array of objects with stable "id" and a SINGLE "content" block, e.g. {{"id":"a","content":{{"type":"text","format":"plain","content":"Option text"}}}}. Use [] for non-choice questions.
+   - "correctAnswer": an array of option IDs for single_choice/multiple_choice, a string for true_false/fill_blank/short_answer, or null when unknown
+   - "explanation": {{"general":[{{"type":"text","format":"plain","content":"Explanation"}}],"byOptionId":{{}}}}. Use an empty general array when no explanation is available.
+3. For single_choice: exactly 4 options, exactly one correct option ID.
+4. For multiple_choice: exactly 4 options, one or more correct option IDs.
+5. For true_false: options [], correctAnswer is "True" or "False".
+6. For fill_blank: correctAnswer is the exact word/phrase to fill in.
+7. For short_answer: correctAnswer is a concise reference answer. Do not invent images or base64 strings. No source/page fields.
 8. All questions must be based on the document content.
 9. Use the specified language for questions.{chapter_rule}
 "#,

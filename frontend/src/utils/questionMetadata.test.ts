@@ -1,14 +1,15 @@
+import { normalizeQuestion } from '@exameow/shared'
 import { Difficulty, QuestionType } from '@exameow/shared'
 import { tagQuestions } from './questionMetadata.ts'
 
-const questions = [{
+const questions = [normalizeQuestion({
   id: 'q1',
   type: QuestionType.SingleChoice,
   stem: 'Question',
-  options: ['A'],
+  options: ['A', 'B'],
   answer: 'A',
   analysis: '',
-}]
+})]
 
 const tagged = tagQuestions(
   questions,

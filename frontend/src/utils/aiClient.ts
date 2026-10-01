@@ -1,10 +1,11 @@
+import { normalizeQuestion } from '@exameow/shared'
 import type { AIConfig, ExamParams, Question, QuestionType, Difficulty } from '@exameow/shared'
 import { resolveAIOptions } from '@exameow/shared'
 import { chatRequest } from './chatRequest'
 
 export function buildSystemPrompt(autoChapter = false): string {
   const questionTypes = [
-    'single_choice', 'multi_choice', 'true_false', 'fill_blank', 'short_answer',
+    'single_choice', 'multiple_choice', 'true_false', 'fill_blank', 'short_answer',
   ].join(', ')
 
   return `You are an expert exam question generator. Generate questions based on the provided document content.
@@ -20,15 +21,15 @@ export function buildSystemPrompt(autoChapter = false): string {
 2. Each question object MUST have these required fields:
    - "id": a short unique identifier string
    - "type": one of [${questionTypes}]
-   - "stem": the question text
-   - "options": array of option strings (required for single_choice/multi_choice/true_false; empty array for others)
-   - "answer": the correct answer
-   - "analysis": brief explanation of the answer (can be empty string for fill_blank/short_answer)
-3. For single_choice: exactly 4 options, one correct.
-4. For multi_choice: exactly 4 options, at least one correct (list correct letters separated by comma in answer).
-5. For true_false: options ["True", "False"], answer is "True" or "False".
-6. For fill_blank: answer is the exact word/phrase to fill in.
-7. For short_answer: answer is a concise reference answer.
+   - "questionHeader": an ordered array of text blocks, e.g. [{"type":"text","format":"plain","content":"Question text"}]
+   - "options": an array of objects with stable "id" and a SINGLE "content" block, e.g. {"id":"a","content":{"type":"text","format":"plain","content":"Option text"}}. Use [] for non-choice questions.
+   - "correctAnswer": an array of option IDs for single_choice/multiple_choice, a string for true_false/fill_blank/short_answer, or null when unknown
+   - "explanation": {"general":[{"type":"text","format":"plain","content":"Explanation"}],"byOptionId":{}}. Use an empty general array when no explanation is available.
+3. For single_choice: exactly 4 options, exactly one correct option ID.
+4. For multiple_choice: exactly 4 options, one or more correct option IDs.
+5. For true_false: options [], correctAnswer is "True" or "False".
+6. For fill_blank: correctAnswer is the exact word/phrase to fill in.
+7. For short_answer: correctAnswer is a concise reference answer. Do not invent images or base64 strings. No source/page fields.
 8. All questions must be based on the document content.
 9. Use the specified language for questions.${autoChapter ? '\n10. When chapter tagging is enabled, also include "chapter" in every question: use the original chapter title from the material, or a concise knowledge topic in the requested language if there are no headings. Use an empty string if uncertain. Reuse the same name for the same chapter within and across batches.' : ''}`
 }
@@ -128,7 +129,7 @@ function parseQuestions(jsonStr: string): Question[] {
     throw new Error('AI returned empty questions array')
   }
 
-  return questions
+  return questions.map(normalizeQuestion)
 }
 
 export async function callCustomAI(

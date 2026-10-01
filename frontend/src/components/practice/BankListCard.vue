@@ -341,7 +341,8 @@ const hasExportMessage = computed(() => templateExportSuccess.value || templateE
               >
                 XLSX
               </button>
-              <button
+              <button class="w-full px-4 py-2 text-left text-sm" @click.stop="handleExportBank(bank, 'json')">JSON (with images)</button>
+                  <button
                 class="w-full px-4 py-2 text-left text-sm hover:bg-[rgb(var(--md-primary)/0.08)] transition-colors"
                 :style="{ color: 'rgb(var(--md-on-surface))' }"
                 @click.stop="handleExportBank(bank, 'csv')"

@@ -1,35 +1,11 @@
-use exameow_core::exam::{Difficulty, Question, QuestionType};
+use exameow_core::exam::Question;
 use exameow_core::export::{export_csv, export_xlsx_to_writer};
 
 fn make_questions() -> Vec<Question> {
-    vec![
-        Question {
-            id: "q1".to_string(),
-            qtype: QuestionType::SingleChoice,
-            stem: "What is 2+2?".to_string(),
-            options: vec!["3".to_string(), "4".to_string(), "5".to_string(), "6".to_string()],
-            answer: "4".to_string(),
-            analysis: "Basic arithmetic".to_string(),
-            ai_analysis: None,
-            score: None,
-            subject: Some("计算机".to_string()),
-            chapter: Some("第一章".to_string()),
-            difficulty: Some(Difficulty::Hard),
-        },
-        Question {
-            id: "q2".to_string(),
-            qtype: QuestionType::TrueFalse,
-            stem: "The sky is blue.".to_string(),
-            options: vec!["True".to_string(), "False".to_string()],
-            answer: "True".to_string(),
-            analysis: "".to_string(),
-            ai_analysis: None,
-            score: None,
-            subject: None,
-            chapter: None,
-            difficulty: None,
-        },
-    ]
+    serde_json::from_value(serde_json::json!([
+        {"id":"q1","type":"single_choice","stem":"What is 2+2?","options":["3","4","5","6"],"answer":"B","analysis":"Basic arithmetic","subject":"计算机","chapter":"第一章","difficulty":"hard"},
+        {"id":"q2","type":"true_false","stem":"The sky is blue.","options":["True","False"],"answer":"True","analysis":""}
+    ])).unwrap()
 }
 
 #[test]

@@ -1,3 +1,4 @@
+import { normalizeQuestion } from '@exameow/shared'
 import { Difficulty, QuestionType } from '@exameow/shared'
 import type { Question } from '@exameow/shared'
 import { generateCsvContent as generateHttpCsvContent } from './http'
@@ -13,13 +14,13 @@ function csvRow(content: string, rowIndex: number): string[] {
 }
 
 const questions: Question[] = [
-  {
-    id: 'q1', type: QuestionType.SingleChoice, stem: 'Populated', options: ['A'], answer: 'A', analysis: '',
+  normalizeQuestion({
+    id: 'q1', type: QuestionType.SingleChoice, stem: 'Populated', options: ['A', 'B'], answer: 'A', analysis: '',
     subject: 'Subject', chapter: 'Chapter', difficulty: Difficulty.Hard,
-  },
-  {
-    id: 'q2', type: QuestionType.ShortAnswer, stem: 'Missing', options: [], answer: 'Answer', analysis: '',
-  },
+  }),
+  normalizeQuestion({
+    id: 'q2', type: QuestionType.ShortAnswer, stem: 'Missing', options: ['A', 'B'], answer: 'Answer', analysis: '',
+  }),
 ]
 
 for (const [name, generate] of [

@@ -1,3 +1,4 @@
+import { normalizeQuestion } from '../../packages/shared/src/questions'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Ai, Fetcher, D1Database } from '@cloudflare/workers-types'
@@ -329,7 +330,7 @@ app.get('/api/export', async (c) => {
 
   let questions: Question[]
   try {
-    questions = JSON.parse(questionsParam)
+    questions = JSON.parse(questionsParam).map(normalizeQuestion)
   } catch {
     return c.json({ error: 'Invalid questions JSON' }, 400)
   }
@@ -356,7 +357,9 @@ app.post('/api/export/xlsx', async (c) => {
     return c.json({ error: 'Expected array of questions' }, 400)
   }
 
-  const xlsxData = generateXlsxBuffer(questions as Question[])
+  let canonical: Question[]
+  try { canonical = questions.map(normalizeQuestion) } catch (e) { return c.json({ error: String(e) }, 400) }
+  const xlsxData = generateXlsxBuffer(canonical)
   return new Response(xlsxData, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

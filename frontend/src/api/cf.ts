@@ -1,3 +1,4 @@
+import { headerText, answerText, explanationText, blockText } from '@exameow/shared'
 import type { AIConfig, AnswerResult, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo, Question } from '@exameow/shared'
 import { resolveAIOptions } from '@exameow/shared'
 import { AVAILABLE_CF_MODELS } from './cf-models'
@@ -55,18 +56,18 @@ export const cfApi = {
   async exportXlsx(questions: Question[], filename: string = 'exameow_questions.xlsx'): Promise<void> {
     const XLSX = await import('xlsx')
     const data = questions.map((q) => ({
-      '题干（必填）': q.stem,
+      '题干（必填）': headerText(q),
       '题型 （必填）': typeLabel(q.type),
-      '选项 A': q.options[0] || '',
-      '选项 B': q.options[1] || '',
-      '选项 C': q.options[2] || '',
-      '选项 D': q.options[3] || '',
-      '选项 E': q.options[4] || '',
-      '选项 F': q.options[5] || '',
-      '选项 G': q.options[6] || '',
-      '选项 H': q.options[7] || '',
-      '正确答案': q.answer,
-      '解析': q.analysis,
+      '选项 A': blockText(q.options[0]?.content),
+      '选项 B': blockText(q.options[1]?.content),
+      '选项 C': blockText(q.options[2]?.content),
+      '选项 D': blockText(q.options[3]?.content),
+      '选项 E': blockText(q.options[4]?.content),
+      '选项 F': blockText(q.options[5]?.content),
+      '选项 G': blockText(q.options[6]?.content),
+      '选项 H': blockText(q.options[7]?.content),
+      '正确答案': answerText(q),
+      '解析': explanationText(q),
       '学科': q.subject || '',
       '章节': q.chapter || '',
       '难度': q.difficulty || '',
@@ -160,24 +161,24 @@ export const cfApi = {
 
 export function generateCsvContent(questions: Question[]): string {
   const typeLabels: Record<string, string> = {
-    single_choice: '单选题', multi_choice: '多选题',
+    single_choice: '单选题', multiple_choice: '多选题',
     true_false: '判断题', fill_blank: '填空题',
     short_answer: '简答题',
   }
   const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '学科', '章节', '难度']
   const rows = questions.map((q) => [
-    q.stem,
+    headerText(q),
     typeLabels[q.type] || q.type,
-    q.options[0] || '',
-    q.options[1] || '',
-    q.options[2] || '',
-    q.options[3] || '',
-    q.options[4] || '',
-    q.options[5] || '',
-    q.options[6] || '',
-    q.options[7] || '',
-    q.answer,
-    q.analysis,
+    blockText(q.options[0]?.content),
+    blockText(q.options[1]?.content),
+    blockText(q.options[2]?.content),
+    blockText(q.options[3]?.content),
+    blockText(q.options[4]?.content),
+    blockText(q.options[5]?.content),
+    blockText(q.options[6]?.content),
+    blockText(q.options[7]?.content),
+    answerText(q),
+    explanationText(q),
     q.subject || '',
     q.chapter || '',
     q.difficulty || '',
@@ -190,7 +191,7 @@ export function generateCsvContent(questions: Question[]): string {
 
 function typeLabel(qtype: string): string {
   const map: Record<string, string> = {
-    single_choice: '单选题', multi_choice: '多选题',
+    single_choice: '单选题', multiple_choice: '多选题',
     true_false: '判断题', fill_blank: '填空题',
     short_answer: '简答题',
   }

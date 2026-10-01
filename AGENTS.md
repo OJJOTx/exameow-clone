@@ -92,18 +92,18 @@ scripts/               deploy-cf.sh, docker-build.sh, start-android-emulator.sh,
 
 Defined in `packages/shared/src/types.ts` (TS) and `packages/core/src/exam/types.rs` (Rust) — keep in sync.
 
-- **Question**: `{ id, type, stem, options[], answer, analysis }`
+- **Question**: `{ id, type, questionHeader: ContentBlock[], options: { id, content: ContentBlock }[], correctAnswer, explanation }`. Images are embedded base64 data URLs. See `docs/question-schema-v2.md`.
 - **QuestionType**: `SingleChoice | MultiChoice | TrueFalse | FillBlank | ShortAnswer`
 - **Difficulty**: `Easy | Medium | Hard`
 - **ExamParams**: `{ question_types, count, type_counts?, difficulty, language, topic_filter?, text?, batch_index?, batch_total?, source_name? }`
-- **QuestionBank**: `{ id, name, questions[], createdAt, source }`
+- **QuestionBank**: `{ schemaVersion: 2, id, name, questions[], createdAt, source }`
 - **PracticeSession**: `{ bankId, mode, questions[], currentIndex, startedAt, finishedAt?, mockConfig? }`
 - **WrongQuestionEntry**: `{ questionId, wrongCount, consecutiveCorrect, lastWrongAt, addedAt }`
 - **AIConfig**: `{ endpoint, api_key, model }`
 
 ## Storage (no database)
 
-- **Browser `localStorage`**: question banks, practice sessions, wrong questions, config. Keys: `exameow-banks`, `exameow-practice-session`, `exameow-wrong`, `exameow-questions`, `exameow-sourcefile`.
+- **Browser IndexedDB**: question banks, practice sessions, generated questions and joined-exam reviews as self-contained JSON. Original localStorage records are retained after migration. **Browser `localStorage`**: wrong questions and config. Keys: `exameow-banks`, `exameow-practice-session`, `exameow-wrong`, `exameow-questions`, `exameow-sourcefile`.
 - **Native (Tauri/Axum)**: AI credentials encrypted with AES-256-GCM via `ConfigStore` in OS config dir (macOS `~/Library/Application Support/Exameow/`, Linux `~/.config/Exameow/`, Windows `%APPDATA%/Exameow/`).
 - **Server is stateless for AI** — 但自 v1.3 起内置在线考试 relay(SQLite),Docker 版完全自包含,不依赖演示站。反滥用:每 IP 每日发布限 20 场;≥3 个独立 IP 举报自动暂停;管理员页 `#/admin`(CF 密钥存 `wrangler secret`,本地备份于 gitignored 的 `.secrets/`)。
 

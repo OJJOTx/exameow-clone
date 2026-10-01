@@ -1,29 +1,5 @@
-export enum QuestionType {
-  SingleChoice = 'single_choice',
-  MultiChoice = 'multi_choice',
-  TrueFalse = 'true_false',
-  FillBlank = 'fill_blank',
-  ShortAnswer = 'short_answer',
-}
-
-export enum Difficulty {
-  Easy = 'easy',
-  Medium = 'medium',
-  Hard = 'hard',
-}
-
-export interface Question {
-  id: string
-  type: QuestionType
-  stem: string
-  options: string[]
-  answer: string
-  analysis: string
-  score?: number
-  subject?: string
-  chapter?: string
-  difficulty?: Difficulty
-}
+import { QuestionType, Difficulty, type Question, type PublicQuestion } from '../../packages/shared/src/types'
+export { QuestionType, Difficulty, type Question, type PublicQuestion } from '../../packages/shared/src/types'
 
 export interface ExamParams {
   question_types: QuestionType[]
@@ -110,12 +86,6 @@ export interface ExplainResult {
 
 export const DEFAULT_MODEL = '@cf/openai/gpt-oss-120b'
 
-export interface PublicQuestion {
-  id: string
-  type: QuestionType
-  stem: string
-  options: string[]
-}
 
 export interface PublishExamRequest {
   title: string

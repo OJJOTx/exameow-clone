@@ -1,7 +1,8 @@
+import { headerText, answerText, explanationText, blockText } from '@exameow/shared'
 import type { AIConfig, AIRequestOptions, AnswerResult, ExamParams, ExplainParams, ExplainResult, JudgeParams, JudgeResult, ModelInfo, Question } from '@exameow/shared'
 import { resolveAIOptions } from '@exameow/shared'
 
-const BASE_URL = import.meta.env.VITE_API_URL || ''
+const BASE_URL = import.meta.env?.VITE_API_URL || ''
 
 export interface GenerateResult {
   questions: Question[]
@@ -179,24 +180,24 @@ export const httpApi = {
 
 export function generateCsvContent(questions: Question[]): string {
   const typeLabels: Record<string, string> = {
-    single_choice: '单选题', multi_choice: '多选题',
+    single_choice: '单选题', multiple_choice: '多选题',
     true_false: '判断题', fill_blank: '填空题',
     short_answer: '简答题',
   }
   const headers = ['题干', '题型', '选项A', '选项B', '选项C', '选项D', '选项E', '选项F', '选项G', '选项H', '正确答案', '解析', '学科', '章节', '难度']
   const rows = questions.map((q) => [
-    q.stem,
+    headerText(q),
     typeLabels[q.type] || q.type,
-    q.options[0] || '',
-    q.options[1] || '',
-    q.options[2] || '',
-    q.options[3] || '',
-    q.options[4] || '',
-    q.options[5] || '',
-    q.options[6] || '',
-    q.options[7] || '',
-    q.answer,
-    q.analysis,
+    blockText(q.options[0]?.content),
+    blockText(q.options[1]?.content),
+    blockText(q.options[2]?.content),
+    blockText(q.options[3]?.content),
+    blockText(q.options[4]?.content),
+    blockText(q.options[5]?.content),
+    blockText(q.options[6]?.content),
+    blockText(q.options[7]?.content),
+    answerText(q),
+    explanationText(q),
     q.subject || '',
     q.chapter || '',
     q.difficulty || '',

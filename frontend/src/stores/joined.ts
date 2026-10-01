@@ -1,3 +1,4 @@
+import { questionStorage } from '@/utils/questionStorage'
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import type { GradedQuestion } from '@exameow/shared'
@@ -17,7 +18,7 @@ const KEY = 'exameow-joined'
 
 function load(): JoinedRecord[] {
   try {
-    return JSON.parse(localStorage.getItem(KEY) || '[]')
+    return JSON.parse(questionStorage.getItem(KEY) || '[]')
   } catch {
     return []
   }
@@ -25,7 +26,7 @@ function load(): JoinedRecord[] {
 
 export const useJoinedStore = defineStore('joined', () => {
   const list = ref<JoinedRecord[]>(load())
-  watch(list, (v) => localStorage.setItem(KEY, JSON.stringify(v)), { deep: true })
+  watch(list, (v) => questionStorage.setItem(KEY, JSON.stringify(v)), { deep: true })
 
   function add(code: string, name: string) {
     const existing = list.value.find((r) => r.code === code && r.name === name)
