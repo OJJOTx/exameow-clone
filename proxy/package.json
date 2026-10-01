@@ -1,0 +1,10 @@
+{
+  "name": "exameow-agentrouter-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local proxy for AgentRouter.org that injects Codex CLI headers",
+  "scripts": {
+    "start": "node proxy.mjs",
+    "test": "node test.mjs"
+  }
+}

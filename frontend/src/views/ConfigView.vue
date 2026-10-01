@@ -32,16 +32,18 @@ const saveError = ref('')
 const configFetchError = ref('')
 const configFetching = ref(false)
 
-const showEndpointAndAuth = computed(() => {
-  if (isTauri()) return true
-  if (isCloudflare()) return configStore.aiProvider === 'custom'
-  return configStore.aiProvider !== 'server'
+const showEndpoint = computed(() => {
+  return configStore.aiProvider === 'custom' || (!isCloudflare() && !isTauri() && configStore.aiProvider !== 'server' && configStore.aiProvider !== 'gemini' && configStore.aiProvider !== 'cf-free')
+})
+
+const showAuth = computed(() => {
+  return configStore.aiProvider === 'custom' || configStore.aiProvider === 'gemini'
 })
 
 const fetchModelsDisabled = computed(() => {
-  if (isCloudflare()) return configStore.aiProvider === 'custom' && (!configStore.endpoint || !configStore.apiKey)
-  if (isTauri()) return !configStore.endpoint || !configStore.apiKey
+  if (configStore.aiProvider === 'gemini') return !configStore.apiKey
   if (configStore.aiProvider === 'server') return false
+  if (configStore.aiProvider === 'cf-free') return false
   return !configStore.endpoint || !configStore.apiKey
 })
 
@@ -76,11 +78,12 @@ async function handleSave() {
       </div>
     </div>
 
-    <!-- CF: Provider toggle -->
-    <div v-if="isCloudflare()" class="card-filled p-5 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
+    <!-- Provider toggle -->
+    <div class="card-filled p-5 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
       <label class="text-label-md font-semibold block mb-3" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('configAiProvider') }}</label>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <button
+          v-if="isCloudflare()"
           class="btn-tonal text-sm !px-5 !py-2.5"
           :class="{ 'btn-filled': configStore.aiProvider === 'cf-free' }"
           @click="configStore.setProvider('cf-free')"
@@ -89,28 +92,7 @@ async function handleSave() {
           <span>{{ i18n.t('configCfFree') }}</span>
         </button>
         <button
-          class="btn-tonal text-sm !px-5 !py-2.5"
-          :class="{ 'btn-filled': configStore.aiProvider === 'custom' }"
-          @click="configStore.setProvider('custom')"
-        >
-          <ServerIcon class="w-4 h-4" />
-          <span>{{ i18n.t('configCustomApi') }}</span>
-        </button>
-      </div>
-      <p v-if="configStore.aiProvider === 'cf-free'" class="text-body-sm mt-3" style="color: rgb(var(--md-on-surface-variant))">
-        {{ i18n.t('configCfFreeDesc') }}
-      </p>
-      <p v-else class="text-body-sm mt-3" style="color: rgb(var(--md-on-surface-variant))">
-        {{ i18n.t('configCustomApiDesc') }}
-      </p>
-    </div>
-
-    <!-- HTTP/Web: Server env AI vs custom API -->
-    <div v-if="!isCloudflare() && !isTauri()" class="card-filled p-5 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
-      <label class="text-label-md font-semibold block mb-3" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('configAiProvider') }}</label>
-      <div class="flex items-center gap-3">
-        <button
-          v-if="configStore.serverInfo?.has_env_ai"
+          v-if="!isCloudflare() && !isTauri() && configStore.serverInfo?.has_env_ai"
           class="btn-tonal text-sm !px-5 !py-2.5"
           :class="{ 'btn-filled': configStore.aiProvider === 'server' }"
           @click="configStore.setProvider('server')"
@@ -120,15 +102,31 @@ async function handleSave() {
         </button>
         <button
           class="btn-tonal text-sm !px-5 !py-2.5"
-          :class="{ 'btn-filled': configStore.aiProvider !== 'server' }"
+          :class="{ 'btn-filled': configStore.aiProvider === 'custom' }"
           @click="configStore.setProvider('custom')"
         >
           <ServerIcon class="w-4 h-4" />
           <span>{{ i18n.t('configCustomApi') }}</span>
         </button>
+        <button
+          class="btn-tonal text-sm !px-5 !py-2.5"
+          :class="{ 'btn-filled': configStore.aiProvider === 'gemini' }"
+          @click="configStore.setProvider('gemini')"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z" />
+          </svg>
+          <span>{{ i18n.t('configGemini') || 'Google Gemini' }}</span>
+        </button>
       </div>
-      <p v-if="configStore.aiProvider === 'server'" class="text-body-sm mt-3" style="color: rgb(var(--md-on-surface-variant))">
+      <p v-if="configStore.aiProvider === 'cf-free'" class="text-body-sm mt-3" style="color: rgb(var(--md-on-surface-variant))">
+        {{ i18n.t('configCfFreeDesc') }}
+      </p>
+      <p v-else-if="configStore.aiProvider === 'server'" class="text-body-sm mt-3" style="color: rgb(var(--md-on-surface-variant))">
         {{ i18n.t('configServerAiDesc') }}<template v-if="configStore.serverInfo?.endpoint"> · {{ configStore.serverInfo.endpoint }}</template>
+      </p>
+      <p v-else-if="configStore.aiProvider === 'gemini'" class="text-body-sm mt-3" style="color: rgb(var(--md-on-surface-variant))">
+        {{ i18n.t('configGeminiDesc') || 'Use Google Gemini API natively without a proxy.' }}
       </p>
       <p v-else class="text-body-sm mt-3" style="color: rgb(var(--md-on-surface-variant))">
         {{ i18n.t('configCustomApiDesc') }}
@@ -136,7 +134,7 @@ async function handleSave() {
     </div>
 
     <!-- Endpoint (custom API or non-CF) -->
-    <div v-if="showEndpointAndAuth" class="card-filled p-5 sm:p-6 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
+    <div v-if="showEndpoint" class="card-filled p-5 sm:p-6 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
       <label class="text-label-md font-semibold block mb-3" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('configSectionEndpoint') }}</label>
       <div class="relative">
         <ServerIcon class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 z-10" style="color: rgb(var(--md-on-surface-variant))" />
@@ -149,7 +147,7 @@ async function handleSave() {
     </div>
 
     <!-- Auth (custom API or non-CF) -->
-    <div v-if="showEndpointAndAuth" class="card-filled p-5 sm:p-6 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
+    <div v-if="showAuth" class="card-filled p-5 sm:p-6 mb-4 shadow-sm border border-[rgb(var(--md-outline-variant)/0.3)]">
       <label class="text-label-md font-semibold block mb-3" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t('configSectionAuth') }}</label>
       <div class="relative">
         <KeyIcon class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 z-10" style="color: rgb(var(--md-on-surface-variant))" />

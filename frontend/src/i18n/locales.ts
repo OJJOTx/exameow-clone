@@ -81,6 +81,8 @@ export interface LocaleMessages {
   configCustomApi: string
   configCfFreeDesc: string
   configCustomApiDesc: string
+  configGemini: string
+  configGeminiDesc: string
   configServerAi: string
   configServerAiDesc: string
   genTitle: string
@@ -580,6 +582,8 @@ export const zh: LocaleMessages = {
   configCustomApi: '自定义 API',
   configCfFreeDesc: '免费套餐，无需 API Key。每日有限额。',
   configCustomApiDesc: '使用你自己的 OpenAI / DeepSeek API，Key 存在浏览器本地不会泄露。',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: '原生支持 Google Gemini API，无需代理。',
   configServerAi: '服务器内置 AI',
   configServerAiDesc: '使用服务器环境变量提供的 AI 接口，无需填写密钥。',
   genTitle: '出题',
@@ -1079,6 +1083,8 @@ export const zhTW: LocaleMessages = {
   configCustomApi: '自定义 API',
   configCfFreeDesc: '免费套餐，无需 API Key。每日有限额。',
   configCustomApiDesc: '使用你自己的 OpenAI / DeepSeek API，Key 存在浏览器本地不会泄露。',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: '伺服器內建 AI',
   configServerAiDesc: '使用伺服器環境變數提供的 AI 介面，無需填寫金鑰。',
   genTitle: '出題',
@@ -1578,6 +1584,8 @@ export const en: LocaleMessages = {
   configCustomApi: 'Custom API',
   configCfFreeDesc: 'Free tier — no API key needed. Daily limits apply.',
   configCustomApiDesc: 'Use your own OpenAI / DeepSeek API. Key stays in your browser.',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: 'Server built-in AI',
   configServerAiDesc: 'Uses the AI configured via server environment variables. No API key needed.',
   genTitle: 'Generate',
@@ -2077,6 +2085,8 @@ export const ja: LocaleMessages = {
   configCustomApi: 'カスタム API',
   configCfFreeDesc: '無料プラン、APIキー不要。',
   configCustomApiDesc: '独自のOpenAI / DeepSeek APIを使用。キーはブラウザに安全に保存されます。',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: 'サーバー内蔵AI',
   configServerAiDesc: 'サーバーの環境変数で設定されたAIを使用します。APIキーは不要です。',
   genTitle: 'AI問題作成',
@@ -2576,6 +2586,8 @@ export const ko: LocaleMessages = {
   configCustomApi: '사용자 지정 API',
   configCfFreeDesc: '무료 요금제, API 키 불필요. 일일 제한 있음.',
   configCustomApiDesc: '자신의 OpenAI / DeepSeek API 키를 사용하세요.',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: '서버 내장 AI',
   configServerAiDesc: '서버 환경 변수로 설정된 AI를 사용합니다. API 키가 필요 없습니다.',
   genTitle: 'AI 문제 생성',
@@ -3075,6 +3087,8 @@ export const es: LocaleMessages = {
   configCustomApi: 'API Personalizada',
   configCfFreeDesc: 'Plan gratuito sin API key. Límite diario.',
   configCustomApiDesc: 'Usa tu propia API de OpenAI / DeepSeek.',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: 'IA integrada del servidor',
   configServerAiDesc: 'Usa la IA configurada mediante variables de entorno del servidor. Sin API key.',
   genTitle: 'Generar Preguntas IA',
@@ -3574,6 +3588,8 @@ export const fr: LocaleMessages = {
   configCustomApi: 'API Personnalisée',
   configCfFreeDesc: 'Offre gratuite sans clé API. Limite quotidienne.',
   configCustomApiDesc: 'Utilisez votre propre API OpenAI / DeepSeek.',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: 'IA intégrée au serveur',
   configServerAiDesc: 'Utilise l\'IA configurée via les variables d\'environnement du serveur. Aucune clé requise.',
   genTitle: 'Générer des Questions IA',
@@ -4073,6 +4089,8 @@ export const de: LocaleMessages = {
   configCustomApi: 'Eigene API',
   configCfFreeDesc: 'Kostenlos ohne API-Schlüssel. Tageslimit.',
   configCustomApiDesc: 'Nutze deine eigene OpenAI / DeepSeek API.',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: 'Integrierte Server-KI',
   configServerAiDesc: 'Nutzt die über Server-Umgebungsvariablen konfigurierte KI. Kein API-Key nötig.',
   genTitle: 'KI Fragen Generieren',
@@ -4572,6 +4590,8 @@ export const ru: LocaleMessages = {
   configCustomApi: 'Свой API',
   configCfFreeDesc: 'Бесплатный тариф без ключа API. Дневной лимит.',
   configCustomApiDesc: 'Используйте свой API OpenAI / DeepSeek.',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: 'Встроенный ИИ сервера',
   configServerAiDesc: 'Использует ИИ, настроенный через переменные окружения сервера. Ключ не нужен.',
   genTitle: 'Генерация Вопросов ИИ',
@@ -5071,6 +5091,8 @@ export const ar: LocaleMessages = {
   configCustomApi: 'API مخصص',
   configCfFreeDesc: 'خطة مجانية، لا تتطلب مفتاح API. حد يومي.',
   configCustomApiDesc: 'استخدم مفتاح OpenAI / DeepSeek الخاص بك.',
+  configGemini: 'Google Gemini',
+  configGeminiDesc: 'Use Google Gemini API natively without a proxy.',
   configServerAi: 'ذكاء اصطناعي مدمج بالخادم',
   configServerAiDesc: 'يستخدم الذكاء الاصطناعي المُعد عبر متغيرات بيئة الخادم. لا حاجة لمفتاح API.',
   genTitle: 'توليد أسئلة بالذكاء الاصطناعي',
