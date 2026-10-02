@@ -9,12 +9,14 @@ import { headerText, answerText, explanationText } from '@exameow/shared'
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
+import { useConfigStore } from '@/stores/config'
 import type { Question, PracticeMode } from '@exameow/shared'
 import {
   CheckCircleIcon,
   XCircleIcon,
   XMarkIcon,
   SparklesIcon,
+  FlagIcon,
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps<{
@@ -34,6 +36,7 @@ const props = defineProps<{
   aiJudgeError?: string | null
   aiExplaining?: boolean
   aiExplainError?: string | null
+  isReported?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -45,10 +48,24 @@ const emit = defineEmits<{
   (e: 'aiCancel'): void
   (e: 'aiExplain'): void
   (e: 'regrade', correct: boolean): void
+  (e: 'report'): void
 }>()
 
 const i18n = useI18nStore()
+const configStore = useConfigStore()
 const router = useRouter()
+
+const shouldShowExplanation = computed(() => {
+  const mode = configStore.practiceExplanationMode || 'incorrect'
+  if (mode === 'never') return false
+  if (mode === 'always') return true
+  
+  // mode === 'incorrect'
+  if (props.isCorrect === true) return false
+  if (props.isCorrect === false) return true
+  
+  return showFlashcardPreview.value
+})
 
 function goConfig() {
   router.push('/mine/config')
@@ -157,8 +174,8 @@ function getOptionStyle(opt: string, idx: number) {
     const isCorrect = correctAnswerSet.value.has(opt)
     if (isCorrect) {
       return {
-        borderColor: 'rgb(var(--md-primary))',
-        backgroundColor: 'rgba(var(--md-primary), 0.12)',
+        borderColor: 'rgb(76, 175, 80)',
+        backgroundColor: 'rgba(76, 175, 80, 0.12)',
       }
     }
     return {
@@ -178,16 +195,10 @@ function getOptionStyle(opt: string, idx: number) {
   const isCorrect = correctAnswerSet.value.has(opt)
   const wasChosen = selectedSet.value.has(opt)
 
-  if (isCorrect && wasChosen) {
+  if (isCorrect) {
     return {
-      borderColor: 'rgb(var(--md-primary))',
-      backgroundColor: 'rgba(var(--md-primary), 0.12)',
-    }
-  }
-  if (isCorrect && !wasChosen) {
-    return {
-      borderColor: 'rgb(var(--md-primary))',
-      backgroundColor: 'rgba(var(--md-primary), 0.06)',
+      borderColor: 'rgb(76, 175, 80)',
+      backgroundColor: wasChosen ? 'rgba(76, 175, 80, 0.12)' : 'rgba(76, 175, 80, 0.06)',
     }
   }
   if (!isCorrect && wasChosen) {
@@ -206,8 +217,8 @@ function getBadgeStyle(opt: string) {
   if (showFlashcardPreview.value) {
     const isCorrect = correctAnswerSet.value.has(opt)
     return {
-      backgroundColor: isCorrect ? 'rgb(var(--md-primary))' : 'rgb(var(--md-surface-container-highest))',
-      color: isCorrect ? 'rgb(var(--md-on-primary))' : 'rgb(var(--md-on-surface-variant))',
+      backgroundColor: isCorrect ? 'rgb(76, 175, 80)' : 'rgb(var(--md-surface-container-highest))',
+      color: isCorrect ? '#ffffff' : 'rgb(var(--md-on-surface-variant))',
     }
   }
 
@@ -221,11 +232,8 @@ function getBadgeStyle(opt: string) {
   const isCorrect = correctAnswerSet.value.has(opt)
   const wasChosen = selectedSet.value.has(opt)
 
-  if (isCorrect && wasChosen) {
-    return { backgroundColor: 'rgb(var(--md-primary))', color: 'rgb(var(--md-on-primary))' }
-  }
-  if (isCorrect && !wasChosen) {
-    return { backgroundColor: 'rgb(var(--md-primary-container))', color: 'rgb(var(--md-on-primary-container))' }
+  if (isCorrect) {
+    return { backgroundColor: 'rgb(76, 175, 80)', color: '#ffffff' }
   }
   if (!isCorrect && wasChosen) {
     return { backgroundColor: 'rgb(var(--md-error))', color: 'rgb(var(--md-on-error))' }
@@ -289,6 +297,18 @@ function getBadgeStyle(opt: string) {
         <XMarkIcon class="w-3.5 h-3.5" />
         {{ i18n.t('practiceRemoveWrong') }}
       </button>
+
+      <!-- Report/Flag question button -->
+      <button
+        class="btn-icon !w-8 !h-8 shrink-0 transition-all duration-200"
+        :style="{
+          color: isReported ? 'rgb(var(--md-error))' : 'rgb(var(--md-on-surface-variant))',
+        }"
+        :title="isReported ? i18n.t('reportAlreadyFlagged') : i18n.t('reportFlagQuestion')"
+        @click="emit('report')"
+      >
+        <FlagIcon class="w-4.5 h-4.5" :class="{ 'fill-current': isReported }" />
+      </button>
     </div>
 
     <!-- Stem -->
@@ -331,7 +351,7 @@ function getBadgeStyle(opt: string) {
             <CheckCircleIcon
               v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(opt.value)"
               class="w-5 h-5 ml-auto animate-spring-pop shrink-0 mt-1.5"
-              :style="{ color: 'rgb(var(--md-primary))' }"
+              :style="{ color: 'rgb(76, 175, 80)' }"
             />
             <XCircleIcon
               v-if="submitted && !correctAnswerSet.has(opt.value) && selectedSet.has(opt.value)"
@@ -340,10 +360,10 @@ function getBadgeStyle(opt: string) {
             />
           </div>
           <div
-            v-if="(submitted || showFlashcardPreview) && (question.explanation?.byOptionId?.[opt.value]?.length ?? 0) > 0"
-            class="pl-[46px] pr-2 text-xs"
+            v-if="shouldShowExplanation && (submitted || showFlashcardPreview) && (question.explanation?.byOptionId?.[opt.value]?.length ?? 0) > 0"
+            class="pl-[46px] pr-2 text-xs animate-fade-in"
           >
-            <div class="flex items-center gap-1.5 font-bold mb-1" :style="{ color: correctAnswerSet.has(opt.value) ? 'rgb(var(--md-primary))' : 'rgb(var(--md-error))' }">
+            <div class="flex items-center gap-1.5 font-bold mb-1" :style="{ color: correctAnswerSet.has(opt.value) ? 'rgb(76, 175, 80)' : (selectedSet.has(opt.value) ? 'rgb(var(--md-error))' : 'rgb(var(--md-outline-variant))') }">
               <CheckCircleIcon v-if="correctAnswerSet.has(opt.value)" class="w-4 h-4" />
               <XCircleIcon v-else class="w-4 h-4" />
               <span>{{ correctAnswerSet.has(opt.value) ? i18n.t('practiceCorrect') : i18n.t('practiceIncorrect') }}</span>
@@ -374,7 +394,7 @@ function getBadgeStyle(opt: string) {
             <CheckCircleIcon
               v-if="(submitted || showFlashcardPreview) && correctAnswerSet.has(opt.id)"
               class="w-5 h-5 ml-auto animate-spring-pop shrink-0 mt-1.5"
-              :style="{ color: 'rgb(var(--md-primary))' }"
+              :style="{ color: 'rgb(76, 175, 80)' }"
             />
             <XCircleIcon
               v-if="submitted && !correctAnswerSet.has(opt.id) && selectedSet.has(opt.id)"
@@ -383,10 +403,10 @@ function getBadgeStyle(opt: string) {
             />
           </div>
           <div
-            v-if="(submitted || showFlashcardPreview) && (question.explanation?.byOptionId?.[opt.id]?.length ?? 0) > 0"
-            class="pl-[46px] pr-2 text-xs"
+            v-if="shouldShowExplanation && (submitted || showFlashcardPreview) && (question.explanation?.byOptionId?.[opt.id]?.length ?? 0) > 0"
+            class="pl-[46px] pr-2 text-xs animate-fade-in"
           >
-            <div class="flex items-center gap-1.5 font-bold mb-1" :style="{ color: correctAnswerSet.has(opt.id) ? 'rgb(var(--md-primary))' : 'rgb(var(--md-error))' }">
+            <div class="flex items-center gap-1.5 font-bold mb-1" :style="{ color: correctAnswerSet.has(opt.id) ? 'rgb(76, 175, 80)' : (selectedSet.has(opt.id) ? 'rgb(var(--md-error))' : 'rgb(var(--md-outline-variant))') }">
               <CheckCircleIcon v-if="correctAnswerSet.has(opt.id)" class="w-4 h-4" />
               <XCircleIcon v-else class="w-4 h-4" />
               <span>{{ correctAnswerSet.has(opt.id) ? i18n.t('practiceCorrect') : i18n.t('practiceIncorrect') }}</span>
@@ -500,7 +520,7 @@ function getBadgeStyle(opt: string) {
       <!-- Revealed answer panel (before submit) -->
       <div
         v-if="answerRevealed && interactive"
-        class="mt-3 p-3 rounded-xl"
+        class="mt-3 p-3 rounded-xl animate-slide-up"
         :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }"
       >
         <div class="text-label-sm mb-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
@@ -509,7 +529,7 @@ function getBadgeStyle(opt: string) {
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
           {{ answerText(question) }}
         </div>
-        <div v-if="hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+        <div v-if="shouldShowExplanation && hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
           <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><QuestionExplanation :question="question" />
         </div>
       </div>
@@ -526,7 +546,7 @@ function getBadgeStyle(opt: string) {
       </div>
 
       <!-- Result after submit -->
-      <div v-if="submitted" class="mt-3 p-3 rounded-xl" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }">
+      <div v-if="submitted" class="mt-3 p-3 rounded-xl animate-slide-up" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }">
         <div class="text-label-sm mb-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
           {{ i18n.t('practiceReviewYourAnswer') }}
         </div>
@@ -539,10 +559,10 @@ function getBadgeStyle(opt: string) {
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
           {{ answerText(question) }}
         </div>
-        <div v-if="hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+        <div v-if="shouldShowExplanation && hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
           <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><QuestionExplanation :question="question" />
         </div>
-        <div v-if="aiFeedback" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+        <div v-if="shouldShowExplanation && aiFeedback" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
           <span class="text-label-sm">{{ i18n.t('practiceAiFeedback') }}：</span>{{ aiFeedback }}
         </div>
       </div>
@@ -564,14 +584,14 @@ function getBadgeStyle(opt: string) {
       </div>
 
       <!-- Flashcard preview for self-check types -->
-      <div v-if="showFlashcardPreview" class="mt-3 p-3 rounded-xl" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }">
+      <div v-if="showFlashcardPreview" class="mt-3 p-3 rounded-xl animate-slide-up" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }">
         <div class="text-label-sm mb-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
           {{ i18n.t('practiceReviewCorrectAnswer') }}
         </div>
         <div class="text-sm" :style="{ color: 'rgb(var(--md-primary))' }">
           {{ answerText(question) }}
         </div>
-        <div v-if="hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
+        <div v-if="shouldShowExplanation && hasExplanation(question)" class="mt-2 text-sm" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
           <span class="text-label-sm">{{ i18n.t('practiceReviewAnalysis') }}：</span><QuestionExplanation :question="question" />
         </div>
       </div>
@@ -580,7 +600,7 @@ function getBadgeStyle(opt: string) {
     <!-- Correct answer display for choice types (when wrong) -->
     <div
       v-if="submitted && isCorrect === false && isChoiceType"
-      class="mt-4 p-3 rounded-xl"
+      class="mt-4 p-3 rounded-xl animate-slide-up"
       :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }"
     >
       <div class="text-label-sm mb-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">
@@ -593,7 +613,7 @@ function getBadgeStyle(opt: string) {
 
     <p v-if="submitted && question.correctAnswer === null" class="mt-3 text-sm">Answer unknown — this question is not graded.</p>
     <!-- Analysis for choice types (flashcard preview or submitted) -->
-    <div v-if="showFlashcardPreview && isChoiceType && question.explanation?.general?.length > 0" class="mt-3">
+    <div v-if="shouldShowExplanation && showFlashcardPreview && isChoiceType && question.explanation?.general?.length > 0" class="mt-3 animate-slide-up">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))', color: 'rgb(var(--md-on-surface-variant))' }">
         <span class="text-label-sm mr-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceReviewAnalysis') }}：</span>
         <ContentBlocks :blocks="question.explanation.general" />
@@ -601,7 +621,7 @@ function getBadgeStyle(opt: string) {
     </div>
 
     <!-- Analysis for choice types (normal submitted) -->
-    <div v-if="submitted && isChoiceType && question.explanation?.general?.length > 0 && !showFlashcardPreview" class="mt-3">
+    <div v-if="shouldShowExplanation && submitted && isChoiceType && question.explanation?.general?.length > 0 && !showFlashcardPreview" class="mt-3 animate-slide-up">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))', color: 'rgb(var(--md-on-surface-variant))' }">
         <span class="text-label-sm mr-2" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">{{ i18n.t('practiceReviewAnalysis') }}：</span>
         <ContentBlocks :blocks="question.explanation.general" />
@@ -609,7 +629,7 @@ function getBadgeStyle(opt: string) {
     </div>
 
     <!-- AI analysis (submitted, non-mock modes) -->
-    <div v-if="submitted && mode !== 'mock'" class="mt-3">
+    <div v-if="shouldShowExplanation && submitted && mode !== 'mock'" class="mt-3 animate-slide-up">
       <div class="px-3 py-2.5 rounded-xl text-sm" :style="{ backgroundColor: 'rgb(var(--md-surface-container-low))' }">
         <div class="flex items-center justify-between gap-2" :class="{ 'mb-1': question.aiAnalysis || aiExplaining }">
           <span class="text-label-sm flex items-center gap-1" :style="{ color: 'rgb(var(--md-on-surface-variant))' }">

@@ -5,6 +5,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useI18nStore } from '@/stores/i18n'
 import { usePracticeStore } from '@/stores/practice'
 import { useWrongQuestionsStore } from '@/stores/wrongQuestions'
+import { useReportedQuestionsStore } from '@/stores/reportedQuestions'
 import { useConfigStore } from '@/stores/config'
 import { api } from '@/api'
 import { isCloudflare } from '@/utils/platform'
@@ -35,12 +36,18 @@ import {
   QueueListIcon,
   ArrowPathRoundedSquareIcon,
   ExclamationTriangleIcon,
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
 } from '@heroicons/vue/24/outline'
+
+import { useUiStore } from '@/stores/ui'
 
 const i18n = useI18nStore()
 const practiceStore = usePracticeStore()
 const wrongStore = useWrongQuestionsStore()
+const reportedStore = useReportedQuestionsStore()
 const configStore = useConfigStore()
+const uiStore = useUiStore()
 
 type ViewState = 'browse' | 'settings' | 'practice' | 'result'
 
@@ -71,6 +78,19 @@ const wrongToast = ref<string | null>(null)
 const savedMainSession = ref<any>(null)
 const flashcardMode = ref<'exam' | 'flashcard'>('exam')
 const swipeContainer = ref<HTMLElement | null>(null)
+
+const isFullscreen = ref(false)
+const fullscreenHandler = () => {
+  isFullscreen.value = !!document.fullscreenElement
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {})
+  } else {
+    document.exitFullscreen().catch(() => {})
+  }
+}
 
 let pendingDirection: 'next' | 'prev' | null = null
 
@@ -191,9 +211,11 @@ onMounted(() => {
   if (practiceStore.session) {
     wrongStore.syncSession(practiceStore.session)
   }
+  document.addEventListener('fullscreenchange', fullscreenHandler)
 })
 
 watch([viewState, () => practiceStore.session], ([state]) => {
+  uiStore.hideAppShellHeader = state === 'practice'
   nextTick(() => {
     if (swipeContainer.value) {
       detach(swipeContainer.value)
@@ -202,7 +224,7 @@ watch([viewState, () => practiceStore.session], ([state]) => {
       attach(swipeContainer.value)
     }
   })
-})
+}, { immediate: true })
 
 watch(
   [() => practiceStore.session?.currentIndex, () => practiceStore.session?.startedAt],
@@ -220,6 +242,8 @@ watch(
 )
 
 onUnmounted(() => {
+  uiStore.hideAppShellHeader = false
+  document.removeEventListener('fullscreenchange', fullscreenHandler)
   judgeAbort?.abort()
   explainAbort?.abort()
   if (swipeContainer.value) {
@@ -375,6 +399,19 @@ function handleRemoveWrong() {
   if (isEmpty) {
     elapsedText.value = practiceStore.formatTime(practiceStore.getElapsedTime())
     viewState.value = 'result'
+  }
+}
+
+function handleReport() {
+  if (!practiceStore.session || !practiceStore.currentQuestion) return
+  const bankId = practiceStore.session.bankId
+  const originalId = practiceStore.currentQuestion.question.id.replace(/-s\d+$/, '')
+  if (reportedStore.isReported(bankId, originalId)) {
+    reportedStore.unreport(bankId, originalId)
+    showToast(i18n.t('reportAlreadyFlagged'))
+  } else {
+    reportedStore.reportQuestion(bankId, originalId)
+    showToast(i18n.t('reportFlagToast'))
   }
 }
 
@@ -680,13 +717,20 @@ function handleBack() {
           }}
         </p>
       </div>
-      <button
-        v-if="viewState !== 'browse'"
-        class="btn-icon"
-        @click="handleBack"
-      >
-        <ArrowLeftIcon class="w-5 h-5 rtl:rotate-180" />
-      </button>
+      <div v-if="viewState !== 'browse'" class="flex items-center gap-1 sm:gap-2">
+        <button
+          class="btn-icon"
+          @click="toggleFullscreen"
+        >
+          <component :is="isFullscreen ? ArrowsPointingInIcon : ArrowsPointingOutIcon" class="w-5 h-5" />
+        </button>
+        <button
+          class="btn-icon"
+          @click="handleBack"
+        >
+          <ArrowLeftIcon class="w-5 h-5 rtl:rotate-180" />
+        </button>
+      </div>
     </div>
 
     <!-- Browse View -->
@@ -853,6 +897,9 @@ function handleBack() {
             :ai-judge-error="aiJudgeError"
             :ai-explaining="aiExplaining"
             :ai-explain-error="aiExplainError"
+            :is-reported="practiceStore.session && practiceStore.currentQuestion
+              ? reportedStore.isReported(practiceStore.session.bankId, practiceStore.currentQuestion.question.id.replace(/-s\d+$/, ''))
+              : false"
             @ai-judge="handleAiJudge"
             @ai-cancel="handleAiCancel"
             @ai-explain="handleAiExplain"
@@ -861,6 +908,7 @@ function handleBack() {
             @select="handleSelect"
             @self-check="handleSelfCheck"
             @remove-wrong="handleRemoveWrong"
+            @report="handleReport"
           />
         </div>
 

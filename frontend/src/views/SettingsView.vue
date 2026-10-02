@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
+import { useConfigStore } from '@/stores/config'
 import { SUPPORTED_LOCALES } from '@/i18n/locales'
 import { useTheme, type Theme, type AccentColor } from '@/composables/useTheme'
 import { useDesktopUpdater } from '@/composables/useDesktopUpdater'
@@ -19,8 +20,15 @@ import {
 
 const router = useRouter()
 const i18n = useI18nStore()
+const configStore = useConfigStore()
 const { theme, accent, setTheme, setAccent } = useTheme()
 const version = import.meta.env.VITE_APP_VERSION
+
+const practiceExplanationOptions = [
+  { value: 'always', label: 'Always show explinations' },
+  { value: 'incorrect', label: 'Show incorrect questions only' },
+  { value: 'never', label: 'Never show explinations' },
+]
 
 const themeOptions: { value: Theme; key: 'themeSystem' | 'themeLight' | 'themeDark' }[] = [
   { value: 'system', key: 'themeSystem' },
@@ -104,6 +112,20 @@ async function handleOtaCheck() {
           :model-value="i18n.locale"
           :options="SUPPORTED_LOCALES.map(l => ({ value: l.code, label: l.nativeName }))"
           @update:model-value="i18n.setLocale($event)"
+        />
+      </div>
+    </div>
+
+    <!-- Practice Mode -->
+    <div class="card-filled p-5 mb-4">
+      <label class="text-label-md flex items-center justify-center gap-1.5 mb-4" style="color: rgb(var(--md-on-surface-variant))">
+        Practice Mode Explanations
+      </label>
+      <div class="max-w-[280px] mx-auto">
+        <BaseSelect
+          :model-value="configStore.practiceExplanationMode"
+          :options="practiceExplanationOptions"
+          @update:model-value="configStore.practiceExplanationMode = $event"
         />
       </div>
     </div>

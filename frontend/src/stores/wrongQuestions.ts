@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { WrongQuestionEntry, WrongSort, Question, PracticeSession } from '@exameow/shared'
+import { gradeQuestion } from '@exameow/shared'
 import { usePracticeStore } from './practice'
 
 const STORAGE_KEY = 'exameow-wrong-questions'
@@ -157,6 +158,25 @@ export const useWrongQuestionsStore = defineStore('wrongQuestions', () => {
     })
   }
 
+  function reconcileAfterEdit(bankId: string, questionId: string, updatedQuestion: Question, sessionItems: { question: Question; userAnswer: string | null; isCorrect: boolean | null }[]) {
+    // If the question was in the wrong book but user's answer is now correct, remove it
+    const entry = data.value[bankId]?.[questionId]
+    if (!entry) return
+
+    // Check if any session item for this question is now graded correct
+    for (const item of sessionItems) {
+      const originalId = item.question.id.replace(/-s\d+$/, '')
+      if (originalId === questionId && item.userAnswer !== null) {
+        const newGrade = gradeQuestion(updatedQuestion, item.userAnswer)
+        if (newGrade === true) {
+          // User's answer is now correct with the updated question → remove from wrong book
+          removeWrong(bankId, questionId)
+          return
+        }
+      }
+    }
+  }
+
   return {
     data,
     recordWrong,
@@ -170,5 +190,6 @@ export const useWrongQuestionsStore = defineStore('wrongQuestions', () => {
     getWrongQuestions,
     getAllWrongBanks,
     syncSession,
+    reconcileAfterEdit,
   }
 })

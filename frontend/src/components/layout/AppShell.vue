@@ -8,6 +8,7 @@ import TitleBar from './TitleBar.vue'
 import CookieBanner from './CookieBanner.vue'
 import UpdateDialog from './UpdateDialog.vue'
 import LanguageDialog from './LanguageDialog.vue'
+import { useUiStore } from '@/stores/ui'
 import {
   SparklesIcon,
   SunIcon,
@@ -22,6 +23,7 @@ import {
 const router = useRouter()
 const route = useRoute()
 const i18n = useI18nStore()
+const uiStore = useUiStore()
 const showLanguageDialog = ref(false)
 
 const { theme, cycleTheme } = useTheme()
@@ -95,6 +97,7 @@ const headerStyle = {
 
     <!-- ====== Top App Bar ====== -->
     <header
+      v-if="!uiStore.hideAppShellHeader"
       class="sticky z-30 select-none"
       :class="isDesktopTauri ? 'top-[38px]' : 'top-0 safe-top'"
       :style="headerStyle"
@@ -186,6 +189,7 @@ const headerStyle = {
 
     <!-- ====== Bottom Navigation Bar (Mobile Pixel M3) ====== -->
     <nav
+      v-if="!uiStore.hideAppShellHeader"
       class="sm:hidden sticky bottom-0 z-30 safe-bottom"
       :style="{
         backgroundColor: 'rgba(var(--md-surface-container-lowest) / 0.92)',

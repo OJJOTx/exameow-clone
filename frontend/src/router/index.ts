@@ -106,6 +106,12 @@ const router = createRouter({
       meta: { title: 'Wrong Questions' },
     },
     {
+      path: '/mine/review',
+      name: 'mine-review',
+      component: () => import('@/views/ReviewView.vue'),
+      meta: { title: 'Review Questions' },
+    },
+    {
       path: '/mine/records',
       name: 'mine-records',
       component: () => import('@/views/PracticeRecordsView.vue'),

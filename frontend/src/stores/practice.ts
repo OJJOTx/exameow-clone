@@ -1,4 +1,5 @@
 import { normalizeBank, normalizeQuestion, gradeQuestion } from '@exameow/shared'
+import type { Question as SharedQuestion } from '@exameow/shared'
 import { questionStorage } from '@/utils/questionStorage'
 import { answerText } from '@exameow/shared'
 import { defineStore } from 'pinia'
@@ -418,6 +419,37 @@ export const usePracticeStore = defineStore('practice', () => {
     importAnalysis.value = null
   }
 
+  function updateQuestion(bankId: string, questionId: string, updated: Question): boolean {
+    const bank = getBank(bankId)
+    if (!bank) return false
+    const idx = bank.questions.findIndex(q => q.id === questionId)
+    if (idx === -1) return false
+    bank.questions[idx] = updated
+    saveBanks(banks.value)
+    return true
+  }
+
+  function regradeAfterEdit(bankId: string, questionId: string, updatedQuestion: Question): number {
+    if (!session.value || session.value.bankId !== bankId) return 0
+    let changed = 0
+    for (const item of session.value.questions) {
+      const originalId = item.question.id.replace(/-s\d+$/, '')
+      if (originalId === questionId) {
+        const sessionId = item.question.id
+        item.question = { ...updatedQuestion, id: sessionId }
+        if (item.submitted && item.userAnswer !== null) {
+          const newResult = gradeQuestion(updatedQuestion, item.userAnswer)
+          if (newResult !== item.isCorrect) {
+            item.isCorrect = newResult
+            changed++
+          }
+        }
+      }
+    }
+    if (changed > 0) saveSession(session.value)
+    return changed
+  }
+
   return {
     banks,
     session,
@@ -458,5 +490,7 @@ export const usePracticeStore = defineStore('practice', () => {
     importAnalysis,
     confirmImport,
     cancelImport,
+    updateQuestion,
+    regradeAfterEdit,
   }
 })

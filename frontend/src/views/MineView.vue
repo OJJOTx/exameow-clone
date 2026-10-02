@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useI18nStore } from '@/stores/i18n'
+import { useReportedQuestionsStore } from '@/stores/reportedQuestions'
 import {
   CpuChipIcon,
   PaperAirplaneIcon,
@@ -8,14 +9,17 @@ import {
   ChartBarIcon,
   ChevronRightIcon,
   Cog6ToothIcon,
+  FlagIcon,
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
 const i18n = useI18nStore()
+const reportedStore = useReportedQuestionsStore()
 const version = import.meta.env.VITE_APP_VERSION
 
 const entries = [
   { key: 'mineAIConfig', descKey: 'mineAIConfigDesc', path: '/mine/config', icon: CpuChipIcon },
+  { key: 'mineReview', descKey: 'mineReviewDesc', path: '/mine/review', icon: FlagIcon, badge: true },
   { key: 'mineRecords', descKey: 'mineRecordsDesc', path: '/mine/records', icon: ChartBarIcon },
   { key: 'minePublished', descKey: 'minePublishedDesc', path: '/mine/published', icon: PaperAirplaneIcon },
   { key: 'mineJoined', descKey: 'mineJoinedDesc', path: '/mine/joined', icon: PencilSquareIcon },
@@ -46,7 +50,14 @@ const entries = [
           <component :is="e.icon" class="w-6 h-6 stroke-[2]" />
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-title-sm font-bold tracking-tight" style="color: rgb(var(--md-on-surface))">{{ i18n.t(e.key) }}</div>
+          <div class="flex items-center gap-2">
+            <div class="text-title-sm font-bold tracking-tight" style="color: rgb(var(--md-on-surface))">{{ i18n.t(e.key) }}</div>
+            <span
+              v-if="'badge' in e && e.badge && reportedStore.unresolvedCount > 0"
+              class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold"
+              style="background-color: rgb(var(--md-error)); color: rgb(var(--md-on-error))"
+            >{{ reportedStore.unresolvedCount }}</span>
+          </div>
           <div class="text-body-sm mt-0.5" style="color: rgb(var(--md-on-surface-variant))">{{ i18n.t(e.descKey) }}</div>
         </div>
         <div
