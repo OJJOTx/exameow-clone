@@ -30,6 +30,11 @@ const practiceExplanationOptions = [
   { value: 'never', label: 'Never show explinations' },
 ]
 
+const questionViewStyleOptions = [
+  { value: 'v2', label: 'New Style (Split View)' },
+  { value: 'v1', label: 'Old Style (Classic)' },
+]
+
 const themeOptions: { value: Theme; key: 'themeSystem' | 'themeLight' | 'themeDark' }[] = [
   { value: 'system', key: 'themeSystem' },
   { value: 'light', key: 'themeLight' },
@@ -126,6 +131,19 @@ async function handleOtaCheck() {
           :model-value="configStore.practiceExplanationMode"
           :options="practiceExplanationOptions"
           @update:model-value="configStore.practiceExplanationMode = $event"
+        />
+      </div>
+      
+      <div class="divider my-5" />
+      
+      <label class="text-label-md flex items-center justify-center gap-1.5 mb-4" style="color: rgb(var(--md-on-surface-variant))">
+        Question View Style
+      </label>
+      <div class="max-w-[280px] mx-auto">
+        <BaseSelect
+          :model-value="configStore.questionViewStyle"
+          :options="questionViewStyleOptions"
+          @update:model-value="configStore.questionViewStyle = $event"
         />
       </div>
     </div>

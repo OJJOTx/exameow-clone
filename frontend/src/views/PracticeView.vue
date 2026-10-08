@@ -26,6 +26,7 @@ import PracticeResult from '@/components/practice/PracticeResult.vue'
 import AnswerSheet from '@/components/practice/AnswerSheet.vue'
 import WrongQuestionsSortDialog from '@/components/practice/WrongQuestionsSortDialog.vue'
 import PracticeModeToggle from '@/components/practice/PracticeModeToggle.vue'
+import PracticeLayoutV2 from '@/components/practice/PracticeLayoutV2.vue'
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -129,6 +130,10 @@ function triggerNav(dir: 'next' | 'prev', fromGesture: boolean) {
 
 function goPrev() {
   if (practiceStore.isFirstQuestion) return
+  if (configStore.questionViewStyle === 'v2') {
+    doNavigate('prev')
+    return
+  }
   triggerNav('prev', true)
   triggerSlide('prev', 0)
 }
@@ -136,6 +141,10 @@ function goPrev() {
 function goNext() {
   if (practiceStore.isLastQuestion) {
     showSubmitConfirm.value = true
+    return
+  }
+  if (configStore.questionViewStyle === 'v2') {
+    doNavigate('next')
     return
   }
   triggerNav('next', true)
@@ -853,7 +862,45 @@ function handleBack() {
 
     <!-- Practice View -->
     <template v-if="isView('practice') && practiceStore.session && practiceStore.currentQuestion">
-      <div ref="swipeContainer" class="space-y-4 cursor-grab select-none">
+      <PracticeLayoutV2
+        v-if="configStore.questionViewStyle === 'v2'"
+        :question="practiceStore.currentQuestion.question"
+        :mode="practiceStore.session.mode"
+        :user-answer="practiceStore.currentQuestion.userAnswer"
+        :is-correct="practiceStore.currentQuestion.isCorrect"
+        :submitted="practiceStore.currentSubmitted"
+        :question-number="practiceStore.progress.current"
+        :total-questions="practiceStore.progress.total"
+        :answered-count="practiceStore.answeredCount"
+        :auto-advancing="autoAdvancing"
+        :wrong-count="currentWrongCount"
+        :is-wrong-mode="isWrongMode"
+        :flashcard-mode="flashcardMode === 'flashcard'"
+        :ai-configured="configStore.configured"
+        :ai-judging="aiJudging"
+        :ai-feedback="aiFeedback"
+        :ai-judge-error="aiJudgeError"
+        :ai-explaining="aiExplaining"
+        :ai-explain-error="aiExplainError"
+        :is-reported="practiceStore.session && practiceStore.currentQuestion ? reportedStore.isReported(practiceStore.session.bankId, practiceStore.currentQuestion.question.id.replace(/-s\d+$/, '')) : false"
+        :is-first-question="practiceStore.isFirstQuestion"
+        :is-last-question="practiceStore.isLastQuestion"
+        :elapsed-text="practiceStore.formatTime(practiceStore.getElapsedTime())"
+        @ai-judge="handleAiJudge"
+        @ai-cancel="handleAiCancel"
+        @ai-explain="handleAiExplain"
+        @regrade="handleRegrade"
+        @submit="handleSubmit"
+        @select="handleSelect"
+        @self-check="handleSelfCheck"
+        @remove-wrong="handleRemoveWrong"
+        @report="handleReport"
+        @prev="goPrev"
+        @next="goNext"
+        @open-sheet="showAnswerSheet = true"
+        @exit="handleBack"
+      />
+      <div v-else ref="swipeContainer" class="space-y-4 cursor-grab select-none">
         <!-- Progress Bar + Mode Toggle -->
         <div class="card-outlined p-3">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

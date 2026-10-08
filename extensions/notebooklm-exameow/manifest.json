@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Exameow Quiz Downloader for NotebookLM",
+  "version": "1.0.0",
+  "description": "Download quizzes from Google NotebookLM as Exameow-compatible question banks (.json)",
+  "icons": {
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [],
+  "host_permissions": [
+    "https://notebooklm.google.com/*",
+    "https://notebook.google.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://notebooklm.google.com/*",
+        "https://notebook.google.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": [
+        "https://notebooklm.google.com/*",
+        "https://notebook.google.com/*"
+      ]
+    }
+  ]
+}

@@ -30,9 +30,14 @@ export const useConfigStore = defineStore('config', () => {
   const serverInfo = ref<ServerConfigInfo | null>(null)
   
   const practiceExplanationMode = ref<'always' | 'incorrect' | 'never'>('incorrect')
+  const questionViewStyle = ref<'v1' | 'v2'>('v2')
 
   watch(practiceExplanationMode, (val) => {
     localStorage.setItem('exameow_practice_explanation_mode', val)
+  })
+
+  watch(questionViewStyle, (val) => {
+    localStorage.setItem('exameow_question_view_style', val)
   })
 
   const configured = computed(() => {
@@ -71,6 +76,12 @@ export const useConfigStore = defineStore('config', () => {
     if (storedMode && ['always', 'incorrect', 'never'].includes(storedMode)) {
       practiceExplanationMode.value = storedMode
     }
+
+    const storedStyle = localStorage.getItem('exameow_question_view_style') as 'v1' | 'v2'
+    if (storedStyle && ['v1', 'v2'].includes(storedStyle)) {
+      questionViewStyle.value = storedStyle
+    }
+
     if (isCloudflare()) {
       const provider = localStorage.getItem('exameow_ai_provider') as AIProvider
       if (provider === 'custom' || provider === 'cf-free' || provider === 'gemini') {
@@ -185,5 +196,5 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
-  return { endpoint, apiKey, model, maxTokens, tokenParameter, temperature, reasoningEffort, extraPrompt, retries, timeoutSeconds, models, loading, configured, aiProvider, serverInfo, practiceExplanationMode, loadSaved, fetchModels, save, getConfig, setProvider }
+  return { endpoint, apiKey, model, maxTokens, tokenParameter, temperature, reasoningEffort, extraPrompt, retries, timeoutSeconds, models, loading, configured, aiProvider, serverInfo, practiceExplanationMode, questionViewStyle, loadSaved, fetchModels, save, getConfig, setProvider }
 })
