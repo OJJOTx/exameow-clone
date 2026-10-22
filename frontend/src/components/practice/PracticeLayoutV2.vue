@@ -229,17 +229,21 @@ function handleKeydown(e: KeyboardEvent) {
   }
   const num = parseInt(e.key)
   if (!isNaN(num) && num >= 1 && num <= optionLabels.length) {
-    const opts = props.question.type === 'true_false' ? trueFalseOptions.value : props.question.options
+    const opts = props.question.type === 'true_false' ? trueFalseOptions.value : (props.question.options || [])
     if (opts[num - 1]) {
-      const val = props.question.type === 'true_false' ? trueFalseOptions.value[num - 1].value : props.question.options[num - 1].id
-      selectOption(val)
+      const val = props.question.type === 'true_false' ? trueFalseOptions.value[num - 1]?.value : props.question.options?.[num - 1]?.id
+      if (val !== undefined) {
+        selectOption(val)
+      }
     }
   } else if (['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].includes(e.key.toLowerCase())) {
     const idx = e.key.toLowerCase().charCodeAt(0) - 97
-    const opts = props.question.type === 'true_false' ? trueFalseOptions.value : props.question.options
+    const opts = props.question.type === 'true_false' ? trueFalseOptions.value : (props.question.options || [])
     if (opts[idx]) {
-      const val = props.question.type === 'true_false' ? trueFalseOptions.value[idx].value : props.question.options[idx].id
-      selectOption(val)
+      const val = props.question.type === 'true_false' ? trueFalseOptions.value[idx]?.value : props.question.options?.[idx]?.id
+      if (val !== undefined) {
+        selectOption(val)
+      }
     }
   } else if (e.key === 'Enter' && props.question.type === 'multiple_choice' && canSubmit.value) {
     confirmMultiChoice()

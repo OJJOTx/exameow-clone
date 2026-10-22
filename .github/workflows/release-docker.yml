@@ -36,16 +36,9 @@ jobs:
           path: frontend/dist
 
   build-docker:
+    if: "${{ secrets.DOCKERHUB_TOKEN != '' }}"
     needs: build-frontend
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: amd64
-            runner: ubuntu-latest
-          - platform: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -90,6 +83,7 @@ jobs:
           retention-days: 1
 
   merge-manifest:
+    if: "${{ secrets.DOCKERHUB_TOKEN != '' }}"
     needs: build-docker
     runs-on: ubuntu-latest
     permissions:

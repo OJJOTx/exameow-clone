@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.5.2)'
+        required: false
+        default: ''
 
 env:
   APP_NAME: Exameow
@@ -20,9 +26,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check OTA minShell covers new native commands
-        run: bash scripts/check-ota-minshell.sh "${GITHUB_REF_NAME#v}"
-
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
@@ -31,6 +34,24 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+
+      - name: Determine release tag
+        id: tag_info
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            TAG="${{ inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "RELEASE_TAG=${TAG}" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=${TAG#v}" >> $GITHUB_ENV
+
+      - name: Check OTA minShell covers new native commands
+        run: bash scripts/check-ota-minshell.sh "${RELEASE_VERSION}"
 
       - run: pnpm install --frozen-lockfile
 
@@ -78,7 +99,7 @@ jobs:
         run: |
           mkdir -p dist
           UNSIGNED_APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -n 1)
-          ALIGNED_APK="dist/Exameow-${{ github.ref_name }}-android_arm64.apk"
+          ALIGNED_APK="dist/Exameow-${RELEASE_TAG}-android_arm64.apk"
           BUILD_TOOLS=$(find "$ANDROID_HOME/build-tools" -maxdepth 1 -type d | sort -V | tail -n 1)
           "$BUILD_TOOLS/zipalign" -f -v 4 "$UNSIGNED_APK" "$ALIGNED_APK"
           "$BUILD_TOOLS/apksigner" sign \
@@ -95,8 +116,8 @@ jobs:
 
       - name: Package OTA bundle
         run: |
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"
+          TAG="${RELEASE_TAG}"
+          VERSION="${RELEASE_VERSION}"
           MIN_SHELL=$(python3 -c "import json;print(json.load(open('ota.json'))['minShell'])")
           tar -czf mobile-dist.tar.gz -C frontend/dist .
           SHA=$(sha256sum mobile-dist.tar.gz | cut -d' ' -f1)
@@ -117,6 +138,21 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine release tag
+        id: tag_info
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            TAG="${{ inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -125,41 +161,16 @@ jobs:
 
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Exameow ${{ github.ref_name }}
+          tag_name: ${{ steps.tag_info.outputs.tag }}
+          name: Exameow ${{ steps.tag_info.outputs.tag }}
           prerelease: false
           draft: true
           body: |
             ## 🔗 Quick Links
-            - [Docker Image](https://hub.docker.com/r/ailm32442/exameow)
             - [Documentation](https://github.com/${{ github.repository }}#readme)
 
             ## 📦 Downloads
 
-            👉 [Windows-msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-windows_amd64.msi)
-
-            👉 [Windows-portable](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-windows_amd64-portable.zip)
-
-            👉 [MacOS-dmg-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-macos_arm64.dmg)
-
-            👉 [Linux-AppImage-X86_64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_amd64.AppImage)
-
-            👉 [Linux-AppImage-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_arm64.AppImage)
-
-            👉 [Linux-deb-X86_64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_amd64.deb)
-
-            👉 [Linux-deb-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_arm64.deb)
-
-            👉 [Android-apk-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-android_arm64.apk)
-
-            ## ⚠️ macOS: "App is damaged" / 「App 已损坏，无法打开」
-
-            **EN:** The app is ad-hoc signed (not notarized). macOS quarantines apps downloaded from the internet. Run the command below in Terminal, then open the app normally:
-
-            **中文：** 应用为自签名（未公证），从网络下载会带隔离属性。在终端执行以下命令后即可正常打开：
-
-            ```bash
-            xattr -cr /Applications/Exameow.app
-            ```
+            👉 [Android-apk-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/Exameow-${{ steps.tag_info.outputs.tag }}-android_arm64.apk)
           files: artifacts/*
           fail_on_unmatched_files: false

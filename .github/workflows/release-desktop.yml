@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v1.5.2)'
+        required: false
+        default: ''
 
 env:
   APP_NAME: Exameow
@@ -41,23 +47,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact: linux_amd64
-          - platform: ubuntu-24.04-arm
-            target: aarch64-unknown-linux-gnu
-            artifact: linux_arm64
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             artifact: windows_amd64
-          - platform: macos-latest
-            target: aarch64-apple-darwin
-            artifact: macos_arm64
-            bundles: --bundles app
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Determine release tag
+        id: tag_info
+        shell: pwsh
+        run: |
+          $tag = "${{ inputs.version }}"
+          if (-not $tag) {
+            if ("${{ github.ref }}" -like "refs/tags/v*") {
+              $tag = "${{ github.ref_name }}"
+            } else {
+              $pkg = Get-Content package.json | ConvertFrom-Json
+              $tag = "v$($pkg.version)"
+            }
+          }
+          Write-Host "Resolved release tag: $tag"
+          Add-Content -Path $env:GITHUB_ENV -Value "RELEASE_TAG=$tag"
+          Add-Content -Path $env:GITHUB_ENV -Value "RELEASE_VERSION=$($tag.TrimStart('v'))"
 
       - uses: pnpm/action-setup@v4
         with:
@@ -80,62 +93,52 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install Linux deps
-        if: startsWith(matrix.platform, 'ubuntu')
+      - name: Setup updater signing key
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf pkg-config libclang-dev libxcb1-dev libxrandr-dev libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev libwayland-dev libegl-dev xdg-utils libgbm-dev
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
+            Write-Host "No TAURI_SIGNING_PRIVATE_KEY secret found. Generating temporary signing key..."
+            pnpm tauri signer generate -p "exameow" -w "$env:RUNNER_TEMP\tauri_key" --ci
+            $key = Get-Content "$env:RUNNER_TEMP\tauri_key" -Raw
+            Add-Content -Path $env:GITHUB_ENV -Value "TAURI_SIGNING_PRIVATE_KEY=$key"
+            Add-Content -Path $env:GITHUB_ENV -Value "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=exameow"
+          }
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Build Tauri
         run: pnpm tauri build --target ${{ matrix.target }} ${{ matrix.bundles }}
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Retry Build Tauri (transient download failures)
         if: failure() && matrix.platform == 'windows-latest'
         run: pnpm tauri build --target ${{ matrix.target }} ${{ matrix.bundles }}
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: Collect Linux artifacts
-        if: startsWith(matrix.platform, 'ubuntu')
-        run: |
-          mkdir -p dist
-          cp target/${{ matrix.target }}/release/bundle/deb/*.deb dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}.deb
-          cp target/${{ matrix.target }}/release/bundle/appimage/*.AppImage dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}.AppImage
-          cp target/${{ matrix.target }}/release/bundle/appimage/*.AppImage.sig dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}.AppImage.sig
-        shell: bash
+          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Collect Windows artifacts
         if: matrix.platform == 'windows-latest'
+        shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist
-          Copy-Item target/${{ matrix.target }}/release/bundle/msi/*.msi dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}.msi
-          Copy-Item target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}-setup.exe
-          Copy-Item target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe.sig dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}-setup.exe.sig
-          Copy-Item target/${{ matrix.target }}/release/exameow.exe dist/Exameow.exe
-          Compress-Archive -Path dist/Exameow.exe -DestinationPath dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}-portable.zip
-          Remove-Item dist/Exameow.exe
-        shell: pwsh
-
-      - name: Collect macOS artifacts
-        if: matrix.platform == 'macos-latest'
-        run: |
-          mkdir -p dist
-          APP_DIR=$(find target -path '*/release/bundle/macos' -type d | head -n 1)
-          APP=$(find "$APP_DIR" -maxdepth 1 -name "*.app" -type d | head -n 1)
-          xattr -cr "$APP"
-          python3 -m venv /tmp/dmgenv
-          /tmp/dmgenv/bin/pip install dmgbuild
-          WORKDIR=$(mktemp -d)
-          cp -R "$APP" "$WORKDIR/Exameow.app"
-          (cd "$WORKDIR" && /tmp/dmgenv/bin/dmgbuild -s "$GITHUB_WORKSPACE/scripts/dmg-settings.json" "Exameow" "$GITHUB_WORKSPACE/dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}.dmg")
-          rm -rf "$WORKDIR"
-          cp "$APP_DIR"/*.app.tar.gz dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}.app.tar.gz
-          cp "$APP_DIR"/*.app.tar.gz.sig dist/Exameow-${{ github.ref_name }}-${{ matrix.artifact }}.app.tar.gz.sig
-        shell: bash
+          Get-ChildItem target/${{ matrix.target }}/release/bundle/msi/*.msi | ForEach-Object {
+            Copy-Item $_.FullName "dist/Exameow-${env:RELEASE_TAG}-${{ matrix.artifact }}.msi"
+          }
+          Get-ChildItem target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe | ForEach-Object {
+            Copy-Item $_.FullName "dist/Exameow-${env:RELEASE_TAG}-${{ matrix.artifact }}-setup.exe"
+          }
+          Get-ChildItem target/${{ matrix.target }}/release/bundle/nsis/*-setup.exe.sig | ForEach-Object {
+            Copy-Item $_.FullName "dist/Exameow-${env:RELEASE_TAG}-${{ matrix.artifact }}-setup.exe.sig"
+          }
+          if (Test-Path "target/${{ matrix.target }}/release/exameow.exe") {
+            Copy-Item "target/${{ matrix.target }}/release/exameow.exe" "dist/Exameow.exe"
+            Compress-Archive -Path "dist/Exameow.exe" -DestinationPath "dist/Exameow-${env:RELEASE_TAG}-${{ matrix.artifact }}-portable.zip"
+            Remove-Item "dist/Exameow.exe"
+          }
 
       - uses: actions/upload-artifact@v4
         with:
@@ -149,6 +152,19 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Determine release tag
+        id: tag_info
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            TAG="${{ inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
 
       - uses: actions/download-artifact@v4
         with:
@@ -186,46 +202,25 @@ jobs:
           }, null, 2));
           "
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.tag_info.outputs.tag }}
           REPO: ${{ github.repository }}
 
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ env.APP_NAME }} ${{ github.ref_name }}
+          tag_name: ${{ steps.tag_info.outputs.tag }}
+          name: ${{ env.APP_NAME }} ${{ steps.tag_info.outputs.tag }}
           prerelease: false
           draft: true
           body: |
             ## 🔗 Quick Links
-            - [Docker Image](https://hub.docker.com/r/ailm32442/exameow)
             - [Documentation](https://github.com/${{ github.repository }}#readme)
 
             ## 📦 Downloads
 
-            👉 [Windows-msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-windows_amd64.msi)
+            👉 [Windows-msi](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/Exameow-${{ steps.tag_info.outputs.tag }}-windows_amd64.msi)
 
-            👉 [Windows-portable](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-windows_amd64-portable.zip)
+            👉 [Windows-portable](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/Exameow-${{ steps.tag_info.outputs.tag }}-windows_amd64-portable.zip)
 
-            👉 [MacOS-dmg-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-macos_arm64.dmg)
-
-            👉 [Linux-AppImage-X86_64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_amd64.AppImage)
-
-            👉 [Linux-AppImage-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_arm64.AppImage)
-
-            👉 [Linux-deb-X86_64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_amd64.deb)
-
-            👉 [Linux-deb-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-linux_arm64.deb)
-
-            👉 [Android-apk-Arm64](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Exameow-${{ github.ref_name }}-android_arm64.apk)
-
-            ## ⚠️ macOS: "App is damaged" / 「App 已损坏，无法打开」
-
-            **EN:** The app is ad-hoc signed (not notarized). macOS quarantines apps downloaded from the internet. Run the command below in Terminal, then open the app normally:
-
-            **中文：** 应用为自签名（未公证），从网络下载会带隔离属性。在终端执行以下命令后即可正常打开：
-
-            ```bash
-            xattr -cr /Applications/Exameow.app
-            ```
+            👉 [Windows-setup](https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_info.outputs.tag }}/Exameow-${{ steps.tag_info.outputs.tag }}-windows_amd64-setup.exe)
           files: artifacts/*
           fail_on_unmatched_files: false

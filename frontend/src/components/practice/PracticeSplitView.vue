@@ -198,7 +198,7 @@ function isSelected(optId: string) {
 </label>
 <!-- Option B (SELECTED STATE) -->
 <label class="group relative flex items-start gap-4md p-4md rounded-xl bg-[rgb(var(--md-surface-container))] border-2 border-[rgb(var(--md-primary-container))] ring-2 ring-[rgba(var(--md-primary-container), 0.20)] transition-all duration-150 cursor-pointer shadow-lg shadow-[0_4px_16px_rgba(var(--md-primary-container),0.5)]">
-<input checked="" class="sr-only" name="question_choice" type="radio" value="B">
+<input :checked="true" class="sr-only" name="question_choice" type="radio" value="B">
 <!-- Badge & Keycap (Active State) -->
 <div class="flex flex-col items-center gap-1 flex-shrink-0">
 <span class="w-7 h-7 rounded-lg bg-[rgb(var(--md-primary-container))] text-[rgb(var(--md-on-primary-container))] flex items-center justify-center   text-xs font-bold shadow-sm">
